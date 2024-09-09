@@ -3,8 +3,6 @@ package com.darblee.ballsort.ui
 /**
  * The UI state of game screen
  *
- * For details, see [GameViewModel]
- *
  * @param _mode The public field is [mode] (read-only access). The current game mode. Possible game
  * mode is defined at [GameMode]
  */

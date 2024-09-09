@@ -1,15 +1,30 @@
 package com.darblee.ballsort.ui.screens
 
 import android.util.Log
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.darblee.ballsort.Global
 import com.darblee.ballsort.domain.model.GameViewModel
@@ -77,16 +92,125 @@ fun GameScreen(modifier: Modifier = Modifier) {
             }
         }
     }
-    Greeting(
-        name = "Ball Sort",
-        modifier = modifier
-    )
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(5.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            Button(onClick = {
+                gGameViewModel.randomizeGameBoard()
+            }) {
+                Text("New Game")
+            }
+            Button(onClick = { /*TODO*/ }) {
+                Text("Undo")
+            }
+        }
+        Slider(
+            modifier = Modifier.padding(5.dp),
+            enabled = true,
+            valueRange = 1f .. 100f,
+            steps = 10,
+            onValueChange = { /* TODO */ },
+            onValueChangeFinished = {
+                /* TODO */
+            },
+            value = 20f
+        )
+        DrawGameBoard()
+    }
 }
 
+private const val gBallRadius = 65f
+private var gWidthSpacing = 0F
+private var gHorizontalSpacing = 200f
+
+/**
+ * Draw the game
+ */
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
+fun DrawGameBoard(modifier: Modifier = Modifier) {
+    Box() {
+        Canvas(
+            modifier = modifier.fillMaxSize(),
+        ) {
+            val drawScope = this
+            var startX: Float
+            var startY: Float
+            val columnLength = gBallRadius * 10
+
+            with (drawScope) {
+                gWidthSpacing = size.width / ((Global.MAX_COLUMNS / 2) + 1)
+                for (curCol in 0..< Global.MAX_COLUMNS) {
+                    startY = if (curCol < (Global.MAX_COLUMNS / 2)) {
+                        gHorizontalSpacing
+                    } else {
+                        (gHorizontalSpacing * 2) + columnLength
+                    }
+                    startX = ((curCol % (Global.MAX_COLUMNS / 2)) + 1) * gWidthSpacing
+
+                    drawLine(
+                        color = Color.White,
+                        start = Offset(startX, startY),
+                        end = Offset(startX, (startY + columnLength)),
+                        strokeWidth = 10f
+                    )
+
+                    for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) {
+                        drawBall(this, curCol, curSlot)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Draw the ball
+ */
+fun drawBall(drawScope: DrawScope, col: Int, slot: Int)
+{
+    var startX: Float
+    var startY: Float
+
+    val columnLength = gBallRadius * 10
+
+    with (drawScope) {
+        startY = if (col < (Global.MAX_COLUMNS / 2)) {
+            gHorizontalSpacing
+        } else {
+            (gHorizontalSpacing * 2) + columnLength
+        }
+        startX = ((col % (Global.MAX_COLUMNS / 2)) + 1) * gWidthSpacing
+
+        drawCircle(
+            color = gGameViewModel.getBallColor(col, slot),
+            radius = gBallRadius,
+            center = Offset(startX, startY + yDistance(slot))
+        )
+    }
+}
+
+/**
+ * Distance from base of column
+ */
+fun yDistance(slot: Int): Float
+{
+    val ballRadius = 65f
+    val columnLength = ballRadius * 10
+    return (columnLength - ballRadius - (slot * (2 * ballRadius)))
+}
+
+@Preview(device = "spec:id=reference_phone,shape=Normal,width=411,height=891,unit=dp,dpi=420")
+@Composable
+fun Test()
+{
+    GameScreen()
 }
