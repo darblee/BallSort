@@ -107,7 +107,6 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     fun randomizeGameBoard()
     {
         makeOneRandomMove()
-        printGameBoard()
         setMode(GameUIState.GameMode.UpdatedGameBoard)
     }
 
@@ -198,32 +197,18 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     private fun pop(col:Int) : Color
     {
         var ballColor = Color.Unspecified
+        var curSlot = Global.MAX_SLOT_PER_COLUMN - 1
 
-        if (gameBoard[col][3] != Color.Unspecified ) {
-            ballColor = gameBoard[col][3]
-            gameBoard[col][3] = Color.Unspecified
-            return (ballColor)
+        while (curSlot >= 0) {
+            if (gameBoard[col][curSlot] != Color.Unspecified ) {
+                ballColor = gameBoard[col][curSlot]
+                gameBoard[col][curSlot] = Color.Unspecified
+                return (ballColor)
+            }
+            curSlot--
         }
 
-        if (gameBoard[col][2] != Color.Unspecified ) {
-            ballColor = gameBoard[col][2]
-            gameBoard[col][2] = Color.Unspecified
-            return (ballColor)
-        }
-
-        if (gameBoard[col][1] != Color.Unspecified ) {
-            ballColor = gameBoard[col][1]
-            gameBoard[col][1] = Color.Unspecified
-            return (ballColor)
-        }
-
-        if (gameBoard[col][0] != Color.Unspecified ) {
-            ballColor = gameBoard[col][0]
-            gameBoard[col][0] = Color.Unspecified
-            return (ballColor)
-        }
-
-        return (ballColor)
+        return (Color.Unspecified)
     }
 
     /**
