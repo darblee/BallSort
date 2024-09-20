@@ -9,6 +9,7 @@ import com.darblee.ballsort.utilities.PairArgsSingletonHolder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.io.File
 import kotlin.random.Random
 
@@ -78,6 +79,8 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[5][curSlot] = Color.Cyan
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[6][curSlot] = Color.LightGray
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[7][curSlot] = Color.DarkGray
+
+        setMode(GameUIState.GameMode.Initialization)
     }
 
     /**
@@ -105,6 +108,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     {
         makeOneRandomMove()
         printGameBoard()
+        setMode(GameUIState.GameMode.UpdatedGameBoard)
     }
 
     /**
@@ -236,6 +240,20 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
 
         }
 
+    }
+
+    /*************** Set mode routines ***********************/
+
+    /**
+     * Update [_uiGameState] to a specified mode
+     *
+     * For more details, see [gameUIState]
+     */
+    private fun setMode(mode: GameUIState.GameMode)
+    {
+        _uiGameState.update { curState ->
+            curState.copy(_mode = mode)
+        }
     }
 }
 

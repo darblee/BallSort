@@ -13,6 +13,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +42,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var showNoWinnableMoveDialogBox by remember { mutableStateOf(false) }
     var initializing = false
     var announceVictory = false
+    var gridChange = false
+
 
     val gameBoardFile = File(LocalContext.current.filesDir, Global.GAME_BOARD_FILENAME)
     val historyFile = File(LocalContext.current.filesDir, Global.GAME_HISTORY_FILENAME)
@@ -56,6 +60,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
         GameUIState.GameMode.Initialization -> {
             Log.i("Game Recompose: ", "${gameUIState.mode} : Initializing...")
             initializing = true
+            gridChange = true
+
         }
 
         GameUIState.GameMode.WonGame -> {
@@ -67,8 +73,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
             Log.i(
                 "Game Recompose: ",
                 "${gameUIState.mode} : Board has been modified. Typically start a new user move."
+
             )
+
             noWinnableMove = false
+            gridChange = true
         }
 
         GameUIState.GameMode.NoWinnableMove -> {
@@ -92,6 +101,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
             }
         }
     }
+
+    Log.i(Global.DEBUG_PREFIX, "gridchange = $gridChange")
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Center,
@@ -124,7 +135,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             },
             value = 20f
         )
-        DrawGameBoard()
+         DrawGameBoard(gridChange , Modifier)
     }
 }
 
@@ -136,7 +147,12 @@ private var gHorizontalSpacing = 200f
  * Draw the game
  */
 @Composable
-fun DrawGameBoard(modifier: Modifier = Modifier) {
+fun DrawGameBoard(updatedGameBoard: Boolean, modifier: Modifier = Modifier) {
+
+    val drawBoardToggle = remember { mutableStateOf(true) }
+
+    Log.i(Global.DEBUG_PREFIX, "Draw game board")
+
     Box() {
         Canvas(
             modifier = modifier.fillMaxSize(),
@@ -155,6 +171,11 @@ fun DrawGameBoard(modifier: Modifier = Modifier) {
                         (gHorizontalSpacing * 2) + columnLength
                     }
                     startX = ((curCol % (Global.MAX_COLUMNS / 2)) + 1) * gWidthSpacing
+
+                    if (updatedGameBoard) {
+                        // Force recompose to redraw canvas-based game board
+                        drawBoardToggle.value = !drawBoardToggle.value
+                    }
 
                     drawLine(
                         color = Color.White,
