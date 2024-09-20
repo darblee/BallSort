@@ -25,7 +25,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * Contain the UI state of the solver game. This is used by the game screens to display
      * proper UI elements. Various composable will automatically update when that state changes
      *
-     * For reference, see [ https://dev.to/zachklipp/introduction-to-the-compose-snapshot-system-19cn ]
+     * For reference, see [Compose Snapshot System](https://blog.zachklipp.com/introduction-to-the-compose-snapshot-system/)
      */
     private val _uiGameState = MutableStateFlow(GameUIState())
 
@@ -44,14 +44,18 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     /**
      * Determine if the column is empty or not
      *
-     * @return True if column is empty, otherwise return false
+     * @return
+     * - `True` column is empty
+     * - `false` column is NOT empty
      */
     private fun Int.isEmpty() = gameBoard[this][0] == Color.Unspecified
 
     /**
      *  Determine if the column has available slot to push the ball into
      *
-     *  @return True if iut has available slot, otherwise return false
+     *  @return
+     *  - `True` This column has available slot
+     *  - `false` This column does not have any available slot
      */
     private fun Int.hasOpenSlot() = gameBoard[this][Global.MAX_SLOT_PER_COLUMN - 1] == Color.Unspecified
 
@@ -87,8 +91,8 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * Determine whether it can safely exit the GameViewModel
      *
      * @return
-     * - true Clean-up is done. It is safe to exit the view model
-     * - false Unable to clean-up or in a middle of doing something. Do not exit the view model
+     * - `true` Clean-up is done. It is safe to exit the view model
+     * - `false` Unable to clean-up or in a middle of doing something. Do not exit the view model
      */
     fun canExitGameScreen(): Boolean {
         when (gameUIState.value.mode) {
@@ -121,25 +125,60 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
             if (!curColForPop.isEmpty()) {
                 randomIndexForPop--
                 if (randomIndexForPop == 0) {
-                    val ballColor = pop(curColForPop)
-                    Log.i(Global.DEBUG_PREFIX, "Pop from column $curColForPop and found color ${ballColor.toString()}")
-                    var randomIndexForPush = Random.nextInt(1, (getOpenColumnCount() + 1))
-                    var curColForPush = 0
-                    while (curColForPush < Global.MAX_COLUMNS) {
-                        if (curColForPush.hasOpenSlot()) {
-                            randomIndexForPush--
-                            if (randomIndexForPush == 0) {
-                                push(curColForPush, ballColor)
 
-                                // Completed the process of moving the ball. We can exit this function
-                                return
-                            }
-                        }
-                        curColForPush++
-                    }
+                    // We have identified column to pop from
+                    val ballColor = pop(curColForPop)
+
+                    randomPush(ballColor, curColForPop)
                 }
             }
             curColForPop++
+        }
+
+        return
+    }
+
+    /**
+     * Push the ball in a random destination, with a preference to put
+     * the ball on another ball that has different color
+     *
+     * @param ballColor Ball color
+     * @param avoidColumnNumber Avoid pushing to this column
+     */
+    private fun randomPush(ballColor: Color, avoidColumnNumber: Int)
+    {
+        var randomIndexForPush = Random.nextInt(1, (getOpenColumnCount() + 1))
+        var curColForPush = 0
+        softPushLoop@ while (curColForPush < Global.MAX_COLUMNS) {
+            if ((curColForPush != avoidColumnNumber) && (curColForPush.hasOpenSlot())) {
+                randomIndexForPush--
+                if (randomIndexForPush == 0) {
+
+                    if (push(curColForPush, ballColor, soft = true)) {
+                        // Completed the process of moving the ball. We can exit this function
+                        return
+                    } else {
+                        break@softPushLoop
+                    }
+                }
+            }
+            curColForPush++
+        }
+
+        // Soft push failed. Try again, but this time do a hard push
+        randomIndexForPush = Random.nextInt(1, (getOpenColumnCount() + 1))
+        curColForPush = 0
+        while (curColForPush < Global.MAX_COLUMNS) {
+            if (curColForPush.hasOpenSlot()) {
+                randomIndexForPush--
+                if (randomIndexForPush == 0) {
+                    push(curColForPush, ballColor, soft = false)
+
+                    // Completed the process of moving the ball. We can exit this function
+                    return
+                }
+            }
+            curColForPush++
         }
     }
 
@@ -161,7 +200,8 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     /**
      * Get the number of columns tht has open slot
      *
-     * @return number of columns tht has open slot
+     * @return
+     * number of columns tht has open slot
      */
     private fun getOpenColumnCount():Int
     {
@@ -178,11 +218,43 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * Push the ball onto the specified column
      *
      * @param col Column number to push the ball into
-     * @param color Ball color
+     * @param ballColor Ball color
+     * @param soft Soft push. Reject the push if we are pushing on top of ball that
+     * has the same color
+     *
+     * @return
+     * - `true`  Push was successful
+     * - `false`  Push failed. Either there is no room, or this was a soft push where we attempt
+     * to push the ball on top of another ball with the same color
      */
-    private fun push(col: Int, ballColor: Color)
+    private fun push(col: Int, ballColor: Color, soft: Boolean = false): Boolean
     {
-        Log.i(Global.DEBUG_PREFIX, "Push into column $col. Ball color is ${ballColor.toString()}")
+        if (gameBoard[col][0] == Color.Unspecified) {
+            gameBoard[col][0] = ballColor
+            return (true)
+        }
+
+        if (gameBoard[col][1] == Color.Unspecified) {
+            if ((soft) && (gameBoard[col][0] == ballColor)) return false
+            gameBoard[col][1] = ballColor
+            return (true)
+
+        }
+
+        if (gameBoard[col][2] == Color.Unspecified) {
+            if ((soft) && (gameBoard[col][1] == ballColor)) return false
+            gameBoard[col][2] = ballColor
+            return (true)
+
+        }
+
+        if (gameBoard[col][3] == Color.Unspecified) {
+            if ((soft) && (gameBoard[col][2] == ballColor)) return false
+            gameBoard[col][3] = ballColor
+            return (true)
+        }
+
+        return false
     }
 
     /**
