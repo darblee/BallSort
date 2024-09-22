@@ -120,6 +120,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[4][curSlot] = Color.Magenta
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[5][curSlot] = Color.Cyan
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[6][curSlot] = Color.LightGray
+        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[7][curSlot] = Color(0xFF7D5260)
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[8][curSlot] = Color.Unspecified
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[9][curSlot] = Color.Unspecified
     }
@@ -151,7 +152,44 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
         repeat(30) {
             makeOneRandomMove()
         }
+        packBoard()
         setMode(GameUIState.GameMode.UpdatedGameBoard)
+    }
+
+    /**
+     * Consolidate all balls to 7 columns
+     */
+    private fun packBoard()
+    {
+        var ballColor: Color
+
+        var col = Global.MAX_COLUMNS - 1
+        while (!col.isEmpty()) {
+            ballColor = pop(col)
+            pushToFirstAvailableSlot(ballColor)
+        }
+
+        col = Global.MAX_COLUMNS -2
+        while (!col.isEmpty()) {
+            ballColor = pop(col)
+            pushToFirstAvailableSlot(ballColor)
+        }
+    }
+
+    /**
+     * Push the ball to the first available slot
+     */
+    private fun pushToFirstAvailableSlot(ballColor: Color)
+    {
+        var curCol = 0
+        while (curCol < Global.MAX_COLUMNS) {
+            if (curCol.hasOpenSlot()) {
+                push(curCol, ballColor)
+                return
+            }
+            curCol++
+        }
+
     }
 
     /**
