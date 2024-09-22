@@ -40,6 +40,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      *  The second array index is the slot number. Slot 0 is the bottom of the column.
      */
     var gameBoard = Array(Global.MAX_COLUMNS) { Array<Color>(Global.MAX_SLOT_PER_COLUMN) { Color.Unspecified } }
+        private set
 
     /**
      * Determine if the column is empty or not
@@ -49,6 +50,13 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * - `false` column is NOT empty
      */
     private fun Int.isEmpty() = gameBoard[this][0] == Color.Unspecified
+    private fun Int.isFull() = gameBoard[this][Global.MAX_SLOT_PER_COLUMN - 1] != Color.Unspecified
+
+    var floatingBallColumn = 0
+        private set
+
+    var floatingBallColor = Color.Unspecified
+        private set
 
     /**
      *  Determine if the column has available slot to push the ball into
@@ -126,6 +134,36 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     }
 
     /**
+     * Select column to pop from
+     */
+    fun selectColumnToPop(col: Int)
+    {
+        if (col.isEmpty()) return
+
+        // if selecting same column that was selected earlier, then ignore
+        if (col == floatingBallColumn) return
+
+        floatingBallColumn = col
+        floatingBallColor = pop(col)
+
+        Log.i(Global.DEBUG_PREFIX, "Selected col $floatingBallColumn , color = $floatingBallColor")
+
+        setMode(GameUIState.GameMode.PopBall)
+    }
+
+    /**
+     * Select column to push onto
+     */
+    fun selectColumnToPush(col: Int)
+    {
+        if (col.isFull()) return
+
+        push(col, floatingBallColor)
+
+        setMode(GameUIState.GameMode.UpdatedGameBoard)
+    }
+
+    /**
      * Determine whether it can safely exit the GameViewModel
      *
      * @return
@@ -138,7 +176,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
             GameUIState.GameMode.WonGame -> return false
             GameUIState.GameMode.UpdatedGameBoard -> return true
             GameUIState.GameMode.NoWinnableMove -> return true
-            GameUIState.GameMode.MoveBall -> return true
+            GameUIState.GameMode.PopBall -> return true
             GameUIState.GameMode.ShowHint -> { return true }
         }
     }
@@ -275,7 +313,6 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
                         // Completed the process of moving the ball. We can exit this function
                         return
                     } else {
-                        Log.i(Global.DEBUG_PREFIX, "Soft push fail #1 - try again")
                         break@softPushLoop1
                     }
                 }
@@ -296,7 +333,6 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
                         // Completed the process of moving the ball. We can exit this function
                         return
                     } else {
-                        Log.i(Global.DEBUG_PREFIX, "Soft push fail #2 - try again")
                         break@softPushLoop2
                     }
                 }

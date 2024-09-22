@@ -2,6 +2,7 @@ package com.darblee.ballsort.ui.screens
 
 import android.util.Log
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,8 +14,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -32,17 +33,18 @@ import com.darblee.ballsort.Global
 import com.darblee.ballsort.domain.model.GameViewModel
 import com.darblee.ballsort.gGameViewModel
 import com.darblee.ballsort.ui.GameUIState
+import com.darblee.ballsort.utilities.click
 import java.io.File
 
 @Composable
 fun GameScreen(modifier: Modifier = Modifier) {
-    var moveBallRec : GameUIState.GameMode.MoveBall? = null
     var hintBallRec : GameUIState.GameMode.ShowHint ?= null
     var noWinnableMove by remember {  mutableStateOf( false ) }
     var showNoWinnableMoveDialogBox by remember { mutableStateOf(false) }
     var initializing = false
     var announceVictory = false
     var gridChange = false
+    var popBall = false
 
 
     val gameBoardFile = File(LocalContext.current.filesDir, Global.GAME_BOARD_FILENAME)
@@ -73,7 +75,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
             Log.i(
                 "Game Recompose: ",
                 "${gameUIState.mode} : Board has been modified. Typically start a new user move."
-
             )
 
             noWinnableMove = false
@@ -86,9 +87,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
         }
 
-        GameUIState.GameMode.MoveBall -> {
-            Log.i("Game Recompose: ", "${gameUIState.mode} : Process moving ball")
-            moveBallRec = gameUIState.mode.let { GameUIState.GameMode.MoveBall }
+        GameUIState.GameMode.PopBall -> {
+            Log.i("Game Recompose: ", "${gameUIState.mode} : Process popping ball")
+            gridChange = true
+            popBall = true
         }
 
         GameUIState.GameMode.ShowHint -> {
@@ -102,7 +104,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    Log.i(Global.DEBUG_PREFIX, "gridchange = $gridChange")
+    val view = LocalView.current
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Center,
@@ -116,6 +119,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             Button(onClick = {
+                view.click()
                 gGameViewModel.randomizeGameBoard()
             }) {
                 Text("New Game")
@@ -135,40 +139,61 @@ fun GameScreen(modifier: Modifier = Modifier) {
             },
             value = 20f
         )
-         DrawGameBoard(gridChange , Modifier)
+         DrawGameBoard(Modifier, gridChange, popBall)
     }
 }
 
 private const val gBallRadius = 65f
 private var gWidthSpacing = 0F
-private var gHorizontalSpacing = 200f
+private var gVerticalSpacing = 200f
 
 /**
  * Draw the game
  */
 @Composable
-fun DrawGameBoard(updatedGameBoard: Boolean, modifier: Modifier = Modifier) {
-
+fun DrawGameBoard(modifier: Modifier = Modifier, updatedGameBoard: Boolean, popBall: Boolean, ) {
+    val columnLength = gBallRadius * 10
+    val verticalMidpoint = (gVerticalSpacing * 2) + columnLength
     val drawBoardToggle = remember { mutableStateOf(true) }
 
-    Log.i(Global.DEBUG_PREFIX, "Draw game board")
 
     Box() {
+        val view = LocalView.current
+
         Canvas(
-            modifier = modifier.fillMaxSize(),
+            modifier = modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { tapOffset ->
+                            var xCol = ((tapOffset.x - (gWidthSpacing / 2)) / gWidthSpacing).toInt()
+                            if (xCol > (Global.MAX_COLUMNS - 1))  { xCol = (Global.MAX_COLUMNS - 1) }
+
+                            val column = if (tapOffset.y > verticalMidpoint) { xCol + (Global.MAX_COLUMNS / 2) } else {
+                                xCol
+                            }
+                            view.click()
+
+                            Log.i(
+                                Global.DEBUG_PREFIX,
+                                "tap offset X = $tapOffset.x, Y = ${tapOffset.y}   col = $column"
+                            )
+                            gGameViewModel.selectColumnToPop(column)
+                        }
+                    )
+                }  // .pointerInput
         ) {
             val drawScope = this
             var startX: Float
             var startY: Float
-            val columnLength = gBallRadius * 10
 
             with (drawScope) {
                 gWidthSpacing = size.width / ((Global.MAX_COLUMNS / 2) + 1)
                 for (curCol in 0..< Global.MAX_COLUMNS) {
                     startY = if (curCol < (Global.MAX_COLUMNS / 2)) {
-                        gHorizontalSpacing
+                        gVerticalSpacing
                     } else {
-                        (gHorizontalSpacing * 2) + columnLength
+                        verticalMidpoint
                     }
                     startX = ((curCol % (Global.MAX_COLUMNS / 2)) + 1) * gWidthSpacing
 
@@ -179,7 +204,7 @@ fun DrawGameBoard(updatedGameBoard: Boolean, modifier: Modifier = Modifier) {
 
                     drawLine(
                         color = Color.White,
-                        start = Offset(startX, startY),
+                        start = Offset(startX, startY + (1.5F * gBallRadius)),
                         end = Offset(startX, (startY + columnLength)),
                         strokeWidth = 10f
                     )
@@ -188,6 +213,7 @@ fun DrawGameBoard(updatedGameBoard: Boolean, modifier: Modifier = Modifier) {
                         drawBall(this, curCol, curSlot)
                     }
                 }
+                if (popBall) drawBall(this, gGameViewModel.floatingBallColumn, -1)
             }
         }
     }
@@ -195,6 +221,10 @@ fun DrawGameBoard(updatedGameBoard: Boolean, modifier: Modifier = Modifier) {
 
 /**
  * Draw the ball
+ *
+ * @param drawScope Canvas scope to draw on
+ * @param col Specified column to draw ball on
+ * @param slot Specified slot to draw ball on. If the slot is -1, then this is a floating ball
  */
 fun drawBall(drawScope: DrawScope, col: Int, slot: Int)
 {
@@ -205,17 +235,25 @@ fun drawBall(drawScope: DrawScope, col: Int, slot: Int)
 
     with (drawScope) {
         startY = if (col < (Global.MAX_COLUMNS / 2)) {
-            gHorizontalSpacing
+            gVerticalSpacing
         } else {
-            (gHorizontalSpacing * 2) + columnLength
+            (gVerticalSpacing * 2) + columnLength
         }
         startX = ((col % (Global.MAX_COLUMNS / 2)) + 1) * gWidthSpacing
 
-        drawCircle(
-            color = gGameViewModel.getBallColor(col, slot),
-            radius = gBallRadius,
-            center = Offset(startX, startY + yDistance(slot))
-        )
+        if (slot != -1) {
+            drawCircle(
+                color = gGameViewModel.getBallColor(col, slot),
+                radius = gBallRadius,
+                center = Offset(startX, startY + yDistance(slot))
+            )
+        } else {
+            drawCircle(
+                color = gGameViewModel.floatingBallColor,
+                radius = gBallRadius,
+                center = Offset(startX, startY )
+            )
+        }
     }
 }
 

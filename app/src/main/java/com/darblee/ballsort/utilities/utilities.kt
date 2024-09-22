@@ -1,5 +1,9 @@
 package com.darblee.ballsort.utilities
 
+import android.view.HapticFeedbackConstants
+import android.view.SoundEffectConstants
+import android.view.View
+
 /********************************* Singleton helper functions *************************************/
 
 /**
@@ -41,4 +45,12 @@ val appRepository =  AppRepository.getInstance(db, apiService)
 open class PairArgsSingletonHolder<out T : Any, in A, in B>(creator: (A, B) -> T) :
     SingletonHolder<T, Pair<A, B>>(creator = { (a, b) -> creator(a, b) }) {
     fun getInstance(arg1: A, arg2: B) = getInstanceInternal(Pair(arg1, arg2))
+}
+
+/**
+ * Perform haptic feedback
+ */
+fun View.click() = run {
+    this.let { this.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS) }
+    this.playSoundEffect(SoundEffectConstants.CLICK)
 }
