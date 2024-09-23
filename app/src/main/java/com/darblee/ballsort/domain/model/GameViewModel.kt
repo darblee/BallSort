@@ -5,6 +5,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import com.darblee.ballsort.Global
 import com.darblee.ballsort.ui.GameUIState
+import com.darblee.ballsort.ui.theme.Orange
+import com.darblee.ballsort.ui.theme.Pink40
+import com.darblee.ballsort.ui.theme.Teal
 import com.darblee.ballsort.utilities.PairArgsSingletonHolder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -156,9 +159,13 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[4][curSlot] = Color.Magenta
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[5][curSlot] = Color.Cyan
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[6][curSlot] = Color.LightGray
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[7][curSlot] = Color(0xFF7D5260)
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[8][curSlot] = Color.Unspecified
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[9][curSlot] = Color.Unspecified
+        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[7][curSlot] = Pink40
+        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[8][curSlot] = Teal
+        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[9][curSlot] = Orange
+        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[10][curSlot] = Color.Unspecified
+        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[11][curSlot] = Color.Unspecified
+
+
 
         floatingBallColor = Color.Unspecified
         floatingBallColumn = -1
