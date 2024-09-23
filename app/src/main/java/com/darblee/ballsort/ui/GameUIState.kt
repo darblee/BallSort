@@ -21,7 +21,7 @@ data class GameUIState(
      * @property PopBall Processing ball movement
      * @property ShowHint Find a hint and now need to show the user with animation
      * @property WonGame One ball remaining. User has won the game
-     * @property NoWinnableMove There is no winning move. It will remain this way until there is a new
+     * @property WaitingToPushBall There is no winning move. It will remain this way until there is a new
      * game or when user undo a move
      */
     sealed class GameMode {
@@ -31,6 +31,6 @@ data class GameUIState(
         data object PopBall : GameMode()
         data object ShowHint : GameMode() { /* TODO */ }
         data object WonGame : GameMode()
-        data object NoWinnableMove : GameMode()
+        data object WaitingToPushBall : GameMode()
     }
 }

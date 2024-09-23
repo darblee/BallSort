@@ -50,7 +50,35 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * - `false` column is NOT empty
      */
     private fun Int.isEmpty() = gameBoard[this][0] == Color.Unspecified
+
+    /**
+     * Determine if the column is full or not
+     *
+     * @return
+     * - `True` column is empty
+     * - `false` column is NOT empty
+     */
     private fun Int.isFull() = gameBoard[this][Global.MAX_SLOT_PER_COLUMN - 1] != Color.Unspecified
+
+    /**
+     * Determine if the column is full or not
+     *
+     * @return
+     * - `True` column is empty
+     * - `false` column is NOT empty
+     */
+    fun columnIsFull(col: Int): Boolean
+    {
+        return (col.isFull())
+    }
+
+    /**
+     * Game has floating ball and is ready to get push to a new column
+     */
+    fun hasFloatingBall(): Boolean
+    {
+        return (floatingBallColor != Color.Unspecified)
+    }
 
     var floatingBallColumn = 0
         private set
@@ -131,6 +159,9 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[7][curSlot] = Color(0xFF7D5260)
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[8][curSlot] = Color.Unspecified
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[9][curSlot] = Color.Unspecified
+
+        floatingBallColor = Color.Unspecified
+        floatingBallColumn = -1
     }
 
     /**
@@ -146,8 +177,6 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
         floatingBallColumn = col
         floatingBallColor = pop(col)
 
-        Log.i(Global.DEBUG_PREFIX, "Selected col $floatingBallColumn , color = $floatingBallColor")
-
         setMode(GameUIState.GameMode.PopBall)
     }
 
@@ -159,6 +188,8 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
         if (col.isFull()) return
 
         push(col, floatingBallColor)
+        floatingBallColor = Color.Unspecified
+        floatingBallColumn = -1
 
         setMode(GameUIState.GameMode.UpdatedGameBoard)
     }
@@ -175,7 +206,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
             GameUIState.GameMode.Initialization -> return false
             GameUIState.GameMode.WonGame -> return false
             GameUIState.GameMode.UpdatedGameBoard -> return true
-            GameUIState.GameMode.NoWinnableMove -> return true
+            GameUIState.GameMode.WaitingToPushBall -> return true
             GameUIState.GameMode.PopBall -> return true
             GameUIState.GameMode.ShowHint -> { return true }
         }
@@ -518,6 +549,10 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
         _uiGameState.update { curState ->
             curState.copy(_mode = mode)
         }
+    }
+
+    fun readyToPushBall() {
+        setMode(GameUIState.GameMode.WaitingToPushBall)
     }
 }
 

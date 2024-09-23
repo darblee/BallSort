@@ -46,7 +46,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var gridChange = false
     var popBall = false
 
-
     val gameBoardFile = File(LocalContext.current.filesDir, Global.GAME_BOARD_FILENAME)
     val historyFile = File(LocalContext.current.filesDir, Global.GAME_HISTORY_FILENAME)
 
@@ -76,15 +75,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 "Game Recompose: ",
                 "${gameUIState.mode} : Board has been modified. Typically start a new user move."
             )
-
-            noWinnableMove = false
             gridChange = true
         }
 
-        GameUIState.GameMode.NoWinnableMove -> {
-            noWinnableMove = true
-            Log.i("Game Recompose: ", "${gameUIState.mode} : No winnable move. No dialog needed")
-
+        GameUIState.GameMode.WaitingToPushBall -> {
+            popBall = true
+            Log.i(Global.DEBUG_PREFIX, "${gameUIState.mode} : Ready to push ball")
         }
 
         GameUIState.GameMode.PopBall -> {
@@ -139,7 +135,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
             },
             value = 20f
         )
-         DrawGameBoard(Modifier, gridChange, popBall)
+        DrawGameBoard(Modifier, gridChange, popBall)
     }
 }
 
@@ -151,11 +147,16 @@ private var gVerticalSpacing = 200f
  * Draw the game
  */
 @Composable
-fun DrawGameBoard(modifier: Modifier = Modifier, updatedGameBoard: Boolean, popBall: Boolean, ) {
+fun DrawGameBoard(
+    modifier: Modifier = Modifier,
+    updatedGameBoard: Boolean,
+    popBall: Boolean, )
+{
     val columnLength = gBallRadius * 10
     val verticalMidpoint = (gVerticalSpacing * 2) + columnLength
     val drawBoardToggle = remember { mutableStateOf(true) }
 
+    if (popBall) AnimatePopballSetup()
 
     Box() {
         val view = LocalView.current
@@ -169,16 +170,24 @@ fun DrawGameBoard(modifier: Modifier = Modifier, updatedGameBoard: Boolean, popB
                             var xCol = ((tapOffset.x - (gWidthSpacing / 2)) / gWidthSpacing).toInt()
                             if (xCol > (Global.MAX_COLUMNS - 1))  { xCol = (Global.MAX_COLUMNS - 1) }
 
-                            val column = if (tapOffset.y > verticalMidpoint) { xCol + (Global.MAX_COLUMNS / 2) } else {
-                                xCol
-                            }
-                            view.click()
+                            val column = if (tapOffset.y > verticalMidpoint) { xCol + (Global.MAX_COLUMNS / 2) } else { xCol }
 
-                            Log.i(
-                                Global.DEBUG_PREFIX,
-                                "tap offset X = $tapOffset.x, Y = ${tapOffset.y}   col = $column"
-                            )
-                            gGameViewModel.selectColumnToPop(column)
+                            if (gGameViewModel.hasFloatingBall()) {
+                                if (column == gGameViewModel.floatingBallColumn) {
+                                    view.click()
+                                    gGameViewModel.selectColumnToPush(column)
+                                }
+
+                                // Only push if the column is not full
+                                if (!gGameViewModel.columnIsFull(column))
+                                {
+                                    view.click()
+                                    gGameViewModel.selectColumnToPush(column)
+                                }
+                            } else {
+                                view.click()
+                                gGameViewModel.selectColumnToPop(column)
+                            }
                         }
                     )
                 }  // .pointerInput
@@ -213,7 +222,9 @@ fun DrawGameBoard(modifier: Modifier = Modifier, updatedGameBoard: Boolean, popB
                         drawBall(this, curCol, curSlot)
                     }
                 }
-                if (popBall) drawBall(this, gGameViewModel.floatingBallColumn, -1)
+                if (popBall) {
+                    animatePopballPerform(this)
+                }
             }
         }
     }
@@ -266,6 +277,27 @@ fun yDistance(slot: Int): Float
     val columnLength = ballRadius * 10
     return (columnLength - ballRadius - (slot * (2 * ballRadius)))
 }
+
+/********************* Animation Routine ************************************/
+
+/**
+ *
+ */
+private fun AnimatePopballSetup()
+{
+
+}
+
+/**
+ *
+ */
+private fun animatePopballPerform(drawScope: DrawScope)
+{
+    drawBall(drawScope, gGameViewModel.floatingBallColumn, -1)
+    gGameViewModel.readyToPushBall()
+}
+
+
 
 @Preview(device = "spec:id=reference_phone,shape=Normal,width=411,height=891,unit=dp,dpi=420")
 @Composable
