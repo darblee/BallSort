@@ -3,18 +3,35 @@ package com.darblee.ballsort.domain.model
 import android.util.Log
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.darblee.ballsort.Global
 import com.darblee.ballsort.ui.GameUIState
-import com.darblee.ballsort.ui.theme.Orange
-import com.darblee.ballsort.ui.theme.Pink40
-import com.darblee.ballsort.ui.theme.Teal
+import com.darblee.ballsort.ui.theme.colorList
 import com.darblee.ballsort.utilities.PairArgsSingletonHolder
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.FileWriter
+import java.io.IOException
 import kotlin.random.Random
+
+/**
+ * Position on the game board
+ */
+@Serializable
+data class BallPosition(
+    val col: Int,
+    val slot: Int,
+    val color: Int
+)
 
 /**
  * **View Model for the  Game**
@@ -42,8 +59,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      *  Game board. The first array index is the column number starting from index -
      *  The second array index is the slot number. Slot 0 is the bottom of the column.
      */
-    var gameBoard = Array(Global.MAX_COLUMNS) { Array<Color>(Global.MAX_SLOT_PER_COLUMN) { Color.Unspecified } }
-        private set
+    private var gameBoard = Array(Global.MAX_COLUMNS) { Array(Global.MAX_SLOT_PER_COLUMN) { 0 } }
 
     /**
      * Determine if the column is empty or not
@@ -52,7 +68,8 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * - `True` column is empty
      * - `false` column is NOT empty
      */
-    private fun Int.isEmpty() = gameBoard[this][0] == Color.Unspecified
+    private fun Int.isEmpty() = gameBoard[this][0] == 0
+
 
     /**
      * Determine if the column is full or not
@@ -61,7 +78,8 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * - `True` column is empty
      * - `false` column is NOT empty
      */
-    private fun Int.isFull() = gameBoard[this][Global.MAX_SLOT_PER_COLUMN - 1] != Color.Unspecified
+    private fun Int.isFull() = gameBoard[this][Global.MAX_SLOT_PER_COLUMN - 1] != 0
+
 
     /**
      * Determine if the column is full or not
@@ -80,13 +98,13 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      */
     fun hasFloatingBall(): Boolean
     {
-        return (floatingBallColor != Color.Unspecified)
+        return (floatingBallColorInt != 0)
     }
 
     var floatingBallColumn = 0
         private set
 
-    var floatingBallColor = Color.Unspecified
+    var floatingBallColorInt = 0
         private set
 
     /**
@@ -96,7 +114,8 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      *  - `True` This column has available slot
      *  - `false` This column does not have any available slot
      */
-    private fun Int.hasOpenSlot() = gameBoard[this][Global.MAX_SLOT_PER_COLUMN - 1] == Color.Unspecified
+    private fun Int.hasOpenSlot() = gameBoard[this][Global.MAX_SLOT_PER_COLUMN - 1] == 0
+
 
     /**
      * Determine if the column is homogenous or not. A homogenous column is a column that has
@@ -111,19 +130,19 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     {
         if (col.isEmpty()) return false
 
-        if (gameBoard[col][1] == Color.Unspecified) return false
+        if (gameBoard[col][1] == 0) return false
 
-        if (gameBoard[col][2] == Color.Unspecified) {
-            return if (gameBoard[col][0] == gameBoard[col][1]) true else false
+        if (gameBoard[col][2] == 0) {
+            return gameBoard[col][0] == gameBoard[col][1]
         }
 
         // At this point, we have 2 or more balls.
-        if (gameBoard[col][3] == Color.Unspecified) {
+        return if (gameBoard[col][3] == 0) {
             // The top 2 balls is slot 1 & 2
-            return (gameBoard[col][1] == gameBoard[col][2])
+            (gameBoard[col][1] == gameBoard[col][2])
         } else {
             // The top 2 balls is slot 2 & 3
-            return (gameBoard[col][2] == gameBoard[col][3])
+            (gameBoard[col][2] == gameBoard[col][3])
         }
     }
 
@@ -136,13 +155,15 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      */
     fun getBallColor(col: Int, slot: Int): Color
     {
-        return (gameBoard[col][slot])
+        return (colorList[(gameBoard[col][slot])])
     }
 
     /**
      * Initialize the GameViewModel.
      */
     init {
+        setGameFile(gGameFile)
+
         resetToWinningGameBoard()
         setMode(GameUIState.GameMode.Initialization)
     }
@@ -152,22 +173,16 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      */
     private fun resetToWinningGameBoard()
     {
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[0][curSlot] = Color.Red
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[1][curSlot] = Color.Blue
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[2][curSlot] = Color.Yellow
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[3][curSlot] = Color.Green
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[4][curSlot] = Color.Magenta
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[5][curSlot] = Color.Cyan
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[6][curSlot] = Color.LightGray
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[7][curSlot] = Pink40
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[8][curSlot] = Teal
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[9][curSlot] = Orange
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[10][curSlot] = Color.Unspecified
-        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[11][curSlot] = Color.Unspecified
+        for (curCol in 0 ..< (Global.MAX_COLUMNS - 2)) {
+            for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[curCol][curSlot] = curCol+1
+        }
 
+        // Put in no color for the last 2 columns
+        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[Global.MAX_COLUMNS-2][curSlot] = 0
+        for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[Global.MAX_COLUMNS-1][curSlot] = 0
 
+        floatingBallColorInt = 0
 
-        floatingBallColor = Color.Unspecified
         floatingBallColumn = -1
     }
 
@@ -182,7 +197,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
         if (col == floatingBallColumn) return
 
         floatingBallColumn = col
-        floatingBallColor = pop(col)
+        floatingBallColorInt = popColorInt(col)
 
         setMode(GameUIState.GameMode.PopBall)
     }
@@ -194,8 +209,9 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     {
         if (col.isFull()) return
 
-        push(col, floatingBallColor)
-        floatingBallColor = Color.Unspecified
+        pushColorInt(col, floatingBallColorInt)
+
+        floatingBallColorInt = 0
         floatingBallColumn = -1
 
         setMode(GameUIState.GameMode.UpdatedGameBoard)
@@ -209,26 +225,32 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * - `false` Unable to clean-up or in a middle of doing something. Do not exit the view model
      */
     fun canExitGameScreen(): Boolean {
-        when (gameUIState.value.mode) {
-            GameUIState.GameMode.Initialization -> return false
-            GameUIState.GameMode.WonGame -> return false
-            GameUIState.GameMode.UpdatedGameBoard -> return true
-            GameUIState.GameMode.WaitingToPushBall -> return true
-            GameUIState.GameMode.PopBall -> return true
-            GameUIState.GameMode.ShowHint -> { return true }
+        return when (gameUIState.value.mode) {
+            GameUIState.GameMode.Initialization -> false
+            GameUIState.GameMode.WonGame -> false
+            GameUIState.GameMode.UpdatedGameBoard -> true
+            GameUIState.GameMode.WaitingToPushBall -> true
+            GameUIState.GameMode.PopBall -> true
+            GameUIState.GameMode.ShowHint -> {
+                true
+            }
         }
     }
 
     /**
-     * Randomize game board
+     * Start a new game Randomize game board
      */
-    fun randomizeGameBoard()
+    fun newGame()
     {
         resetToWinningGameBoard()
         repeat(30) {
             makeOneRandomMove()
         }
         packBoard()
+
+        viewModelScope.launch (Dispatchers.IO){
+            saveGameBoardToFile()
+        }
         setMode(GameUIState.GameMode.UpdatedGameBoard)
     }
 
@@ -237,50 +259,48 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      */
     private fun packBoard()
     {
-        var ballColor: Color
+        var ballColorInt: Int
 
         var col = Global.MAX_COLUMNS - 1
         while (!col.isEmpty()) {
-            ballColor = pop(col)
-            pushToFirstAvailableSlot(ballColor)
+            ballColorInt = popColorInt(col)
+            pushToFirstAvailableSlot(ballColorInt)
         }
 
         col = Global.MAX_COLUMNS -2
         while (!col.isEmpty()) {
-            ballColor = pop(col)
-            pushToFirstAvailableSlot(ballColor)
+            ballColorInt = popColorInt(col)
+            pushToFirstAvailableSlot(ballColorInt)
         }
     }
 
     /**
      * Push the ball to the first available slot
      */
-    private fun pushToFirstAvailableSlot(ballColor: Color)
+    private fun pushToFirstAvailableSlot(ballColorInt: Int)
     {
         var curCol = 0
         while (curCol < Global.MAX_COLUMNS) {
             if (curCol.hasOpenSlot()) {
-                push(curCol, ballColor)
+                pushColorInt(curCol, ballColorInt)
                 return
             }
             curCol++
         }
-
     }
 
     /**
      * Move one ball randomly
      */
     private fun makeOneRandomMove() {
-        val (curColForPop, ballColor) = randomPopBall(homogenousOnly = true)
-        if (ballColor != Color.Unspecified) {
-            randomPush(ballColor, curColForPop)
+        val (curColForPop, ballColorInt) = randomPopBall(homogenousOnly = true)
+        if (ballColorInt != 0) {
+            randomPush(ballColorInt, curColForPop)
             return
         }
 
-        val (curColForPop1, ballColor1) = randomPopBall(homogenousOnly = false)
-
-        randomPush(ballColor1, curColForPop1)
+        val (curColForPop1, ballColorInt1) = randomPopBall(homogenousOnly = false)
+        randomPush(ballColorInt1, curColForPop1)
 
         return
     }
@@ -294,14 +314,14 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * - Column that was popped from
      * - Color of the ball. If this is [Color.Unspecified], then popping did not happen
      */
-    private fun randomPopBall(homogenousOnly: Boolean = false): Pair<Int, Color>
+    private fun randomPopBall(homogenousOnly: Boolean = false): Pair<Int, Int>
     {
         var curColForPop = 0
-        var ballColor = Color.Unspecified
+        var ballColorInt = 0
         val homogenousCount = getHomogenousColumnCount()
 
         if (homogenousOnly) {
-            if (homogenousCount == 0) return Pair(0, Color.Unspecified)
+            if (homogenousCount == 0) return Pair(0, 0)
         }
 
         var randomIndexForPop =
@@ -319,25 +339,25 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
                     randomIndexForPop--
                 }
                 if (randomIndexForPop == 0) {
-                    ballColor = pop(curColForPop)
-                    return  Pair(curColForPop, ballColor)
+                    ballColorInt = popColorInt(curColForPop)
+                    return  Pair(curColForPop, ballColorInt)
                 }
             }
             curColForPop++
         }
 
-        return  Pair(curColForPop, ballColor)
+        return  Pair(curColForPop, ballColorInt)
     }
 
     /**
      * Push the ball in a random destination, with a preference to put
      * the ball on another ball that has different color
      *
-     * @param ballColor Ball color
+     * @param ballColorInt Ball color (integer representation)
      * @param avoidColumnNumber Avoid pushing to this column. We do not want to push the ball on
      * same column where we just pop it from
      */
-    private fun randomPush(ballColor: Color, avoidColumnNumber: Int)
+    private fun randomPush(ballColorInt: Int, avoidColumnNumber: Int)
     {
         var randomIndexForPush = Random.nextInt(1, getOpenColumnCount())
         var curColForPush = 0
@@ -347,7 +367,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
                 randomIndexForPush--
                 if (randomIndexForPush == 0) {
 
-                    if (push(curColForPush, ballColor, soft = true)) {
+                    if (pushColorInt(curColForPush, ballColorInt, soft = true)) {
                         // Completed the process of moving the ball. We can exit this function
                         return
                     } else {
@@ -367,7 +387,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
                 randomIndexForPush--
                 if (randomIndexForPush == 0) {
 
-                    if (push(curColForPush, ballColor, soft = true)) {
+                    if (pushColorInt(curColForPush, ballColorInt, soft = true)) {
                         // Completed the process of moving the ball. We can exit this function
                         return
                     } else {
@@ -385,7 +405,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
             if ((curColForPush != avoidColumnNumber) && (curColForPush.hasOpenSlot())) {
                 randomIndexForPush--
                 if (randomIndexForPush == 0) {
-                    push(curColForPush, ballColor, soft = false)
+                    pushColorInt(curColForPush, ballColorInt, soft = false)
 
                     // Completed the process of moving the ball. We can exit this function
                     return
@@ -448,7 +468,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * Push the ball onto the specified column
      *
      * @param col Column number to push the ball into
-     * @param ballColor Ball color
+     * @param ballColorInt Ball color
      * @param soft Soft push. Reject the push if we are pushing on top of ball that
      * has the same color
      *
@@ -457,50 +477,48 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * - `false`  Push failed. Either there is no room, or this was a soft push where we attempt
      * to push the ball on top of another ball with the same color
      */
-    private fun push(col: Int, ballColor: Color, soft: Boolean = false): Boolean
+    private fun pushColorInt(col: Int, ballColorInt: Int, soft: Boolean = false): Boolean
     {
         if ((col >= Global.MAX_COLUMNS) || (col < 0)) {
             Log.i(Global.DEBUG_PREFIX, "Got unexpected column value of $col")
             return false
         }
 
-        if (gameBoard[col][0] == Color.Unspecified) {
-            gameBoard[col][0] = ballColor
+        if (gameBoard[col][0] == 0) {
+            gameBoard[col][0] = ballColorInt
             return (true)
         }
 
-        if (gameBoard[col][1] == Color.Unspecified) {
-            if ((soft) && (gameBoard[col][0] == ballColor)) return false
-            gameBoard[col][1] = ballColor
+        if (gameBoard[col][1] == 0) {
+            if ((soft) && (gameBoard[col][0] == ballColorInt)) return false
+            gameBoard[col][1] = ballColorInt
             return (true)
-
         }
 
-        if (gameBoard[col][2] == Color.Unspecified) {
+        if (gameBoard[col][2] == 0) {
             // (soft push only)  If we are attempting to add ball on top of another of same color, reject it
-            if ((soft) && (gameBoard[col][1] == ballColor)) return false
+            if ((soft) && (gameBoard[col][1] == ballColorInt)) return false
 
             // (soft push only) If we are attempting to add ball on top of homogenous column, then reject it
             if ((soft) && (gameBoard[col][0] == gameBoard[col][1])) return false
 
-            gameBoard[col][2] = ballColor
+            gameBoard[col][2] = ballColorInt
             return (true)
-
         }
 
-        if (gameBoard[col][3] == Color.Unspecified) {
+        if (gameBoard[col][3] == 0) {
             // (soft push only)  If we are attempting to add ball on top of another of same color, reject it
-            if ((soft) && (gameBoard[col][2] == ballColor)) return false
+            if ((soft) && (gameBoard[col][2] == ballColorInt)) return false
 
             // (soft push only) If we are attempting to add ball on top of homogenous column, then reject it
             if ((soft) && (gameBoard[col][1] == gameBoard[col][2])) return false
 
-            gameBoard[col][3] = ballColor
+            gameBoard[col][3] = ballColorInt
             return (true)
         }
-
-        return false
+        return (false)
     }
+
 
     /**
      * Pop the ball from specified column
@@ -511,27 +529,27 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * Color of the ball that got pop from. If there is no ball,
      * then it will return unspecified color
      */
-    private fun pop(col:Int) : Color
+    private fun popColorInt(col:Int) : Int
     {
-        var ballColor = Color.Unspecified
         var curSlot = Global.MAX_SLOT_PER_COLUMN - 1
 
         while (curSlot >= 0) {
-            if (gameBoard[col][curSlot] != Color.Unspecified ) {
-                ballColor = gameBoard[col][curSlot]
-                gameBoard[col][curSlot] = Color.Unspecified
-                return (ballColor)
+            if (gameBoard[col][curSlot] != 0) {
+                val ballColorInt = gameBoard[col][curSlot]
+                gameBoard[col][curSlot] = 0
+                return (ballColorInt)
             }
             curSlot--
         }
 
-        return (Color.Unspecified)
+        return (0)
     }
+
 
     /**
      * Print the game board. This is used primarily for debugging purposes
      */
-    private fun printGameBoard()
+    private fun printGameBoardInt()
     {
         Log.i(Global.DEBUG_PREFIX, "======= Game Board =========")
         for (curCol in 0..< Global.MAX_COLUMNS) {
@@ -539,10 +557,9 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
                 val ballColor = gameBoard[curCol][curSlot]
                 Log.i(Global.DEBUG_PREFIX, "$curCol, $curSlot = $ballColor")
             }
-
         }
-
     }
+
 
     /*************** Set mode routines ***********************/
 
@@ -560,6 +577,51 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
 
     fun readyToPushBall() {
         setMode(GameUIState.GameMode.WaitingToPushBall)
+    }
+
+
+    /**************** File operation routines *************************/
+    private var _gameFile : File? = null
+
+    /**
+     * Set the game file
+     *
+     * @param file Game file
+     */
+    private fun setGameFile(file: File)
+    {
+        _gameFile = file
+    }
+
+    private fun saveGameBoardToFile() {
+        if (_gameFile == null) return
+
+        try {
+            val format = Json { prettyPrint = true }
+            val ballList = mutableListOf<BallPosition>()
+            for (curCol in 0..<Global.MAX_COLUMNS) {
+                for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
+                    val pos = BallPosition(curCol, curSlot, 1)
+                    ballList += pos
+                }
+            }
+
+            val output = format.encodeToString(ballList)
+            val writer = FileWriter(_gameFile)
+            writer.write(output)
+            writer.close()
+        } catch (e: SerializationException) {
+            Log.i(
+                Global.DEBUG_PREFIX,
+                "Serialization error. Unable to encode ball list. Reason: ${e.message}"
+            )
+        } catch (e: IllegalArgumentException) {
+            Log.i(Global.DEBUG_PREFIX, "Serialization error. Detected non-compliant format while saving game file. Reason: ${e.message}")
+        } catch (e: IOException) {
+            Log.i(Global.DEBUG_PREFIX, "File I/O error. Unable to save game file. Reason: ${e.message}")
+        } catch (e: Exception) {
+            Log.i(Global.DEBUG_PREFIX, "Unable to save game. Reason: ${e.message}")
+        }
     }
 }
 

@@ -12,3 +12,17 @@ val Pink40 = Color(0xFF7D5260)
 
 val Teal = Color(0xFF008080)
 val Orange = Color(0xFFe28743)
+
+val colorList = mutableListOf<Color>(
+    Color.Unspecified,
+    Color.Red,
+    Color.Blue,
+    Color.Yellow,
+    Color.Green,
+    Color.Magenta,
+    Color.Cyan,
+    Color.LightGray,
+    Pink40,
+    Teal,
+    Orange
+)

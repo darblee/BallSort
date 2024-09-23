@@ -33,6 +33,7 @@ import com.darblee.ballsort.Global
 import com.darblee.ballsort.domain.model.GameViewModel
 import com.darblee.ballsort.gGameViewModel
 import com.darblee.ballsort.ui.GameUIState
+import com.darblee.ballsort.ui.theme.colorList
 import com.darblee.ballsort.utilities.click
 import java.io.File
 
@@ -116,7 +117,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         ) {
             Button(onClick = {
                 view.click()
-                gGameViewModel.randomizeGameBoard()
+                gGameViewModel.newGame()
             }) {
                 Text("New Game")
             }
@@ -260,7 +261,7 @@ fun drawBall(drawScope: DrawScope, col: Int, slot: Int)
             )
         } else {
             drawCircle(
-                color = gGameViewModel.floatingBallColor,
+                color = colorList[gGameViewModel.floatingBallColorInt],
                 radius = gBallRadius,
                 center = Offset(startX, startY )
             )
