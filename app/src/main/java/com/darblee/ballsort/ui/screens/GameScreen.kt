@@ -174,13 +174,15 @@ fun DrawGameBoard(
                             val column = if (tapOffset.y > verticalMidpoint) { xCol + (Global.MAX_COLUMNS / 2) } else { xCol }
 
                             if (gGameViewModel.hasFloatingBall()) {
+
+                                // Check if we are pushing same ball back to its own column, essentially undoing the move.
                                 if (column == gGameViewModel.floatingBallColumn) {
                                     view.click()
                                     gGameViewModel.selectColumnToPush(column)
                                 }
 
-                                // Only push if the column is not full
-                                if (!gGameViewModel.columnIsFull(column))
+                                // Only push if this is valid column to move to
+                                if (gGameViewModel.validColumnToMoveTo(column))
                                 {
                                     view.click()
                                     gGameViewModel.selectColumnToPush(column)

@@ -229,6 +229,28 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     }
 
     /**
+     * Check to see if floating ball can move to this column.
+     * It is valid if there is room. If the column has a ball, then the floating ball
+     * needs to match the same color as the top ball in the column.
+     */
+    fun validColumnToMoveTo(col: Int): Boolean
+    {
+        if (col.isEmpty()) return true
+
+        if (col.isFull()) return false
+
+        if (gameBoard[col][2] != 0) {
+            return gameBoard[col][2] == floatingBallColorInt
+        }
+
+        if (gameBoard[col][1] != 0) {
+            return gameBoard[col][1] == floatingBallColorInt
+        }
+
+        return gameBoard[col][0] == floatingBallColorInt
+    }
+
+    /**
      * Select column to push onto
      */
     fun selectColumnToPush(col: Int)
@@ -273,8 +295,6 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
             makeOneRandomMove()
         }
         packBoard()
-
-
 
         viewModelScope.launch (Dispatchers.IO){
             saveGameBoardToFile()
