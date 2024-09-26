@@ -118,7 +118,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
 
 
     /**
-     * Determine if the column is homogenous or not. A homogenous column is a column that has
+     * Determine if the column is shallow homogenous or not. A shallow homogenous column is a column that has
      * multiple balls with the same color on top
      *
      * @param col Specified column number
@@ -126,7 +126,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * - `true` There are 2 or more balls on column and the top 2 balls has the same color
      * - `false` There is less than 2 balls or the top 2 balls has mixed color
      */
-    private fun hasSameColorBallsOnTop(col: Int): Boolean
+    private fun isShallowHomogenous(col: Int): Boolean
     {
         if (col.isEmpty()) return false
 
@@ -136,14 +136,40 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
             return gameBoard[col][0] == gameBoard[col][1]
         }
 
-        // At this point, we have 2 or more balls.
-        return if (gameBoard[col][3] == 0) {
-            // The top 2 balls is slot 1 & 2
-            (gameBoard[col][1] == gameBoard[col][2])
-        } else {
-            // The top 2 balls is slot 2 & 3
-            (gameBoard[col][2] == gameBoard[col][3])
-        }
+        // At this point, we have 3 or more balls.
+        if (gameBoard[col][0] == gameBoard[col][1]) return true
+
+        if (gameBoard[col][1] == gameBoard[col][2]) return true
+
+        if (gameBoard[col][2] == gameBoard[col][3]) return true
+
+        return false
+    }
+
+    /**
+     * Determine if the column has 3 or more balls with the same color
+     */
+    private fun isDeepHomogenous(col: Int): Boolean
+    {
+        if (col.isEmpty()) return false
+
+        // If this column only has 2 balls, then this does nto qualify
+        if (gameBoard[col][2] == 0) return false
+
+        val color1 = gameBoard[col][0]
+        val color2 = gameBoard[col][1]
+        val color3 = gameBoard[col][2]
+        val color4 = gameBoard[col][3]
+
+        if ((color1 == color2) && (color1 == color3)) return true
+
+        if ((color1 == color2) && (color1 == color4)) return true
+
+        if ((color1 == color3) && (color1 == color4)) return true
+
+        if ((color2 == color3) && (color2 == color4)) return true
+
+        return false
     }
 
     /**
@@ -243,10 +269,12 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     fun newGame()
     {
         resetToWinningGameBoard()
-        repeat(30) {
+        repeat(100) {
             makeOneRandomMove()
         }
         packBoard()
+
+
 
         viewModelScope.launch (Dispatchers.IO){
             saveGameBoardToFile()
@@ -308,39 +336,67 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     /**
      * Pop the ball from one of the columns
      *
-     * @param homogenousOnly Try to avoid popping from homogenous column
+     * @param homogenousOnly Try to pop from homogenous column
      *
      * @return
      * - Column that was popped from
-     * - Color of the ball. If this is [Color.Unspecified], then popping did not happen
+     * - Color of the ball. If this is 0, then popping did not happen
      */
     private fun randomPopBall(homogenousOnly: Boolean = false): Pair<Int, Int>
     {
         var curColForPop = 0
         var ballColorInt = 0
-        val homogenousCount = getHomogenousColumnCount()
+        val deepHomogenousCount = getDeepHomogenousColumnCount()
+        val shallowHomogenousCount = getShallowHomogenousColumnCount()
 
         if (homogenousOnly) {
-            if (homogenousCount == 0) return Pair(0, 0)
+            if ((deepHomogenousCount == 0) && (shallowHomogenousCount == 0))
+                return Pair(0, 0)
         }
+
+        if (deepHomogenousCount > 0) {
+            var randomIndexForPop =
+                if (homogenousOnly) {
+                    Random.nextInt(1, (deepHomogenousCount + 1))
+                } else {
+                    Random.nextInt(1, (getNonEmptyColumnCount() + 1))
+                }
+
+            while (curColForPop < Global.MAX_COLUMNS) {
+                if (!curColForPop.isEmpty()) {
+                    if (homogenousOnly) {
+                        if (isDeepHomogenous(curColForPop)) randomIndexForPop--
+                    } else {
+                        randomIndexForPop--
+                    }
+                    if (randomIndexForPop == 0) {
+                        ballColorInt = popColorInt(curColForPop)
+                        return Pair(curColForPop, ballColorInt)
+                    }
+                }
+                curColForPop++
+            }
+        }
+
+        if  ((homogenousOnly) && (shallowHomogenousCount == 0)) return Pair(0, 0)
 
         var randomIndexForPop =
             if (homogenousOnly) {
-                Random.nextInt(1, (homogenousCount + 1))
+                Random.nextInt(1, (shallowHomogenousCount + 1))
             } else {
                 Random.nextInt(1, (getNonEmptyColumnCount() + 1))
             }
 
         while (curColForPop < Global.MAX_COLUMNS) {
             if (!curColForPop.isEmpty()) {
-                if (homogenousOnly)  {
-                    if (hasSameColorBallsOnTop(curColForPop)) randomIndexForPop--
+                if (homogenousOnly) {
+                    if (isShallowHomogenous(curColForPop)) randomIndexForPop--
                 } else {
                     randomIndexForPop--
                 }
                 if (randomIndexForPop == 0) {
                     ballColorInt = popColorInt(curColForPop)
-                    return  Pair(curColForPop, ballColorInt)
+                    return Pair(curColForPop, ballColorInt)
                 }
             }
             curColForPop++
@@ -448,17 +504,36 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     }
 
     /**
-     * Determine the number of homogenous columns
+     * Determine the number of shallow homogenous columns.
+     * Shallow homogenous type is 2 balls with the same color on the top
      *
      * @return
-     * -  Number of homogenous column
+     * -  Number of shallow homogenous column
      */
-    private fun getHomogenousColumnCount(): Int
+    private fun getShallowHomogenousColumnCount(): Int
     {
         var count = 0
 
         for (curCol in 0 ..< Global.MAX_COLUMNS ) {
-            if (hasSameColorBallsOnTop(curCol)) count++
+            if (isShallowHomogenous(curCol)) count++
+        }
+
+        return count
+    }
+
+    /**
+     * Determine the number of columns that is a deep homogenous type.
+     * Deep homogenous means there is 3 or more of the same color in the same column
+     *
+     * @return
+     * -  Number of deep homogenous column
+     */
+    private fun getDeepHomogenousColumnCount(): Int
+    {
+        var count = 0
+
+        for (curCol in 0 ..< Global.MAX_COLUMNS ) {
+            if (isDeepHomogenous(curCol)) count++
         }
 
         return count
@@ -502,6 +577,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
             // (soft push only) If we are attempting to add ball on top of homogenous column, then reject it
             if ((soft) && (gameBoard[col][0] == gameBoard[col][1])) return false
 
+
             gameBoard[col][2] = ballColorInt
             return (true)
         }
@@ -510,8 +586,8 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
             // (soft push only)  If we are attempting to add ball on top of another of same color, reject it
             if ((soft) && (gameBoard[col][2] == ballColorInt)) return false
 
-            // (soft push only) If we are attempting to add ball on top of homogenous column, then reject it
-            if ((soft) && (gameBoard[col][1] == gameBoard[col][2])) return false
+            // (soft push only) If we are attempting to add ball on top of shallow homogenous column, then reject it
+            if ((soft) && (isShallowHomogenous(col))) return false
 
             gameBoard[col][3] = ballColorInt
             return (true)
@@ -578,7 +654,6 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     fun readyToPushBall() {
         setMode(GameUIState.GameMode.WaitingToPushBall)
     }
-
 
     /**************** File operation routines *************************/
     private var _gameFile : File? = null
