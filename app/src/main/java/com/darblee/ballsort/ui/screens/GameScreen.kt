@@ -121,6 +121,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
             }) {
                 Text("New Game")
             }
+            Button(onClick = {
+                view.click()
+                gGameViewModel.resetGame()
+            }) {
+                Text("Restart")
+            }
             Button(onClick = { /*TODO*/ }) {
                 Text("Undo")
             }

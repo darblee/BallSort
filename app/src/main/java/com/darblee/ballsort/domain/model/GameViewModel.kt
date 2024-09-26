@@ -14,24 +14,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.FileReader
 import java.io.FileWriter
 import java.io.IOException
 import kotlin.random.Random
-
-/**
- * Position on the game board
- */
-@Serializable
-data class BallPosition(
-    val col: Int,
-    val slot: Int,
-    val color: Int
-)
 
 /**
  * **View Model for the  Game**
@@ -688,16 +678,18 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
         _gameFile = file
     }
 
+    /**
+     * Same the game to the file
+     */
     private fun saveGameBoardToFile() {
         if (_gameFile == null) return
 
         try {
             val format = Json { prettyPrint = true }
-            val ballList = mutableListOf<BallPosition>()
+            val ballList = mutableListOf<Int>()
             for (curCol in 0..<Global.MAX_COLUMNS) {
                 for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
-                    val pos = BallPosition(curCol, curSlot, 1)
-                    ballList += pos
+                    ballList += gameBoard[curCol][curSlot]
                 }
             }
 
@@ -706,16 +698,54 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
             writer.write(output)
             writer.close()
         } catch (e: SerializationException) {
-            Log.i(
-                Global.DEBUG_PREFIX,
-                "Serialization error. Unable to encode ball list. Reason: ${e.message}"
-            )
+            Log.i(Global.DEBUG_PREFIX, "Serialization error. Unable to encode ball list. Reason: ${e.message}")
         } catch (e: IllegalArgumentException) {
             Log.i(Global.DEBUG_PREFIX, "Serialization error. Detected non-compliant format while saving game file. Reason: ${e.message}")
         } catch (e: IOException) {
             Log.i(Global.DEBUG_PREFIX, "File I/O error. Unable to save game file. Reason: ${e.message}")
         } catch (e: Exception) {
             Log.i(Global.DEBUG_PREFIX, "Unable to save game. Reason: ${e.message}")
+        }
+    }
+
+    /**
+     * Load the start of the game
+     */
+    private fun loadGameBoardFromFile()
+    {
+        if (_gameFile == null) return
+
+        try {
+            val reader = FileReader(_gameFile)
+            val data = reader.readText()
+            reader.close()
+
+            val ballList = Json.decodeFromString<List<Int>>(data)
+            var index = 0
+            for (curCol in 0..<Global.MAX_COLUMNS) {
+                for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
+                    gameBoard[curCol][curSlot] = ballList[index]
+                    index++
+                }
+            }
+        } catch (e: SerializationException) {
+            Log.i(Global.DEBUG_PREFIX, "Serialization error. Unable to decode ball list when loading the game file. Reason: ${e.message}")
+        } catch (e: IllegalArgumentException) {
+            Log.i(Global.DEBUG_PREFIX, "Serialization error. Detected non-compliant format while loading game file. Reason: ${e.message}")
+        } catch (e: IOException) {
+            Log.i(Global.DEBUG_PREFIX, "File I/O error. Unable to load game file. Reason: ${e.message}")
+        } catch (e: Exception) {
+            Log.i(Global.DEBUG_PREFIX, "An error while trying to load the saved gam. Reason: ${e.message}")
+        }
+    }
+
+    /**
+     * Reset the game. Retrieve from saved game
+     */
+    fun resetGame() {
+        viewModelScope.launch(Dispatchers.IO) {
+            loadGameBoardFromFile()
+            setMode(GameUIState.GameMode.UpdatedGameBoard)
         }
     }
 }
