@@ -133,17 +133,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 Text("Undo")
             }
         }
-        Slider(
-            modifier = Modifier.padding(5.dp),
-            enabled = true,
-            valueRange = 1f .. 100f,
-            steps = 10,
-            onValueChange = { /* TODO */ },
-            onValueChangeFinished = {
-                /* TODO */
-            },
-            value = 20f
-        )
         DrawGameBoard(Modifier, gridChange, popBall)
     }
 }
