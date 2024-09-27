@@ -1,8 +1,6 @@
 package com.darblee.ballsort.domain.model
 
 import android.util.Log
-import androidx.collection.MutableIntList
-import androidx.collection.mutableIntListOf
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -25,7 +23,7 @@ import java.io.FileWriter
 import java.io.IOException
 import kotlin.random.Random
 
-typealias gameSnapshot = MutableIntList
+typealias gameSnapshot = MutableList<Int>
 
 /**
  * **View Model for the  Game**
@@ -187,10 +185,11 @@ class GameViewModel(gHistFile: File) : ViewModel() {
      * Initialize the GameViewModel.
      */
     init {
-        setHistoryFile(gHistFile)
-
-        resetToWinningGameBoard()
-        setMode(GameUIState.GameMode.Initialization)
+        viewModelScope.launch(Dispatchers.IO) {
+            setHistoryFile(gHistFile)
+            loadHistoryFromFile()
+            setMode(GameUIState.GameMode.Initialization)
+        }
     }
 
     /**
@@ -314,7 +313,7 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         }
         packBoard()
 
-        viewModelScope.launch (Dispatchers.IO){
+        viewModelScope.launch(Dispatchers.IO) {
             addSnapshotToHistory()
             setMode(GameUIState.GameMode.UpdatedGameBoard)
         }
@@ -737,16 +736,17 @@ class GameViewModel(gHistFile: File) : ViewModel() {
             val data = reader.readText()
             reader.close()
 
-            val snapshotList = Json.decodeFromString<List<MutableIntList>>(data)
+            val historyList = Json.decodeFromString<List<List<Int>>>(data)
             _moveHistory.clear()
 
-            snapshotList.forEach { curSnapshot ->
-                val newGameSnapshot: gameSnapshot = mutableIntListOf()
-                curSnapshot.forEach { curBallColor ->
-                    newGameSnapshot.add(curBallColor)
+            historyList.forEach { curSnapshot ->
+                val newGameSnapshot : gameSnapshot = mutableListOf()
+                curSnapshot.forEach { curBallColorInt ->
+                    newGameSnapshot.add(curBallColorInt)
                 }
                 _moveHistory.add(newGameSnapshot)
             }
+            updateGameFromSnapshot(_moveHistory.last())
 
         } catch (e: SerializationException) {
             Log.i(Global.DEBUG_PREFIX, "Serialization error. Unable to decode ball list when loading the game file. Reason: ${e.message}")
@@ -757,6 +757,7 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         } catch (e: Exception) {
             Log.i(Global.DEBUG_PREFIX, "An error while trying to load the saved gam. Reason: ${e.message}")
         }
+
     }
 
     /**
@@ -783,7 +784,7 @@ class GameViewModel(gHistFile: File) : ViewModel() {
      */
     private fun createGameSnapshot(): gameSnapshot
     {
-        val snapshot : MutableIntList = mutableIntListOf()
+        val snapshot : MutableList<Int> = mutableListOf()
         for (curCol in 0..<Global.MAX_COLUMNS) {
             for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
                 snapshot += gameBoard[curCol][curSlot]
