@@ -32,19 +32,19 @@ open class SingletonHolder<out T : Any, in A>(creator: (A) -> T) {
 }
 
 /**
- * If you need to pass TWO arguments to the constructor of the singleton class.
- * Extended from [PairArgsSingletonHolder] for best match.
+ * If you need to pass only ONE argument to the constructor of the singleton class.
+ * Make companion object extended from [SingleArgSingletonHolder] for best match.
  * Ex:
-class AppRepository private constructor(private val db: Database, private val apiService: ApiService) {
-companion object : PairArgsSingletonHolder<AppRepository, Database, ApiService>(::AppRepository)
+class AppRepository private constructor(private val db: Database) {
+companion object : SingleArgSingletonHolder<AppRepository, Database>(::AppRepository)
 }
- *
+
  * Uses:
-val appRepository =  AppRepository.getInstance(db, apiService)
+val appRepository =  AppRepository.getInstance(db)
  */
-open class PairArgsSingletonHolder<out T : Any, in A, in B>(creator: (A, B) -> T) :
-    SingletonHolder<T, Pair<A, B>>(creator = { (a, b) -> creator(a, b) }) {
-    fun getInstance(arg1: A, arg2: B) = getInstanceInternal(Pair(arg1, arg2))
+open class SingleArgSingletonHolder<out T : Any, in A>(creator: (A) -> T) :
+    SingletonHolder<T, A>(creator) {
+    fun getInstance(arg: A): T = getInstanceInternal(arg)
 }
 
 /**

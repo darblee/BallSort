@@ -47,10 +47,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var gridChange = false
     var popBall = false
 
-    val gameBoardFile = File(LocalContext.current.filesDir, Global.GAME_BOARD_FILENAME)
     val historyFile = File(LocalContext.current.filesDir, Global.GAME_HISTORY_FILENAME)
 
-    gGameViewModel = GameViewModel.getInstance(gameBoardFile, historyFile)
+    gGameViewModel = GameViewModel.getInstance(historyFile)
 
     val gameUIState by gGameViewModel.gameUIState.collectAsStateWithLifecycle()
 
@@ -127,7 +126,10 @@ fun GameScreen(modifier: Modifier = Modifier) {
             }) {
                 Text("Restart")
             }
-            Button(onClick = { /*TODO*/ }) {
+            Button(onClick = {
+                view.click()
+                gGameViewModel.userRevertToPreviousMove()
+            }) {
                 Text("Undo")
             }
         }
@@ -184,14 +186,14 @@ fun DrawGameBoard(
                                 // Check if we are pushing same ball back to its own column, essentially undoing the move.
                                 if (column == gGameViewModel.floatingBallColumn) {
                                     view.click()
-                                    gGameViewModel.selectColumnToPush(column)
+                                    gGameViewModel.userSelectColumnToPush(column)
                                 }
 
                                 // Only push if this is valid column to move to
                                 if (gGameViewModel.validColumnToMoveTo(column))
                                 {
                                     view.click()
-                                    gGameViewModel.selectColumnToPush(column)
+                                    gGameViewModel.userSelectColumnToPush(column)
                                 }
                             } else {
                                 view.click()

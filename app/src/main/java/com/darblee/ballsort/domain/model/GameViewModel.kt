@@ -1,13 +1,15 @@
 package com.darblee.ballsort.domain.model
 
 import android.util.Log
+import androidx.collection.MutableIntList
+import androidx.collection.mutableIntListOf
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.darblee.ballsort.Global
 import com.darblee.ballsort.ui.GameUIState
 import com.darblee.ballsort.ui.theme.colorList
-import com.darblee.ballsort.utilities.PairArgsSingletonHolder
+import com.darblee.ballsort.utilities.SingleArgSingletonHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,11 +25,13 @@ import java.io.FileWriter
 import java.io.IOException
 import kotlin.random.Random
 
+typealias gameSnapshot = MutableIntList
+
 /**
  * **View Model for the  Game**
  */
-class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
-    companion object : PairArgsSingletonHolder<GameViewModel, File, File>(::GameViewModel)
+class GameViewModel(gHistFile: File) : ViewModel() {
+    companion object : SingleArgSingletonHolder<GameViewModel, File>(::GameViewModel)
 
     /********************************* GAME MANAGEMENT ********************************************/
 
@@ -50,6 +54,11 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      *  The second array index is the slot number. Slot 0 is the bottom of the column.
      */
     private var gameBoard = Array(Global.MAX_COLUMNS) { Array(Global.MAX_SLOT_PER_COLUMN) { 0 } }
+
+    /**
+     * List of all the moves in a single game
+     */
+    private var _moveHistory : MutableList<gameSnapshot> = mutableListOf()
 
     /**
      * Determine if the column is empty or not
@@ -178,7 +187,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * Initialize the GameViewModel.
      */
     init {
-        setGameFile(gGameFile)
+        setHistoryFile(gHistFile)
 
         resetToWinningGameBoard()
         setMode(GameUIState.GameMode.Initialization)
@@ -243,7 +252,7 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     /**
      * Select column to push onto
      */
-    fun selectColumnToPush(col: Int)
+    fun userSelectColumnToPush(col: Int)
     {
         if (col.isFull()) return
 
@@ -252,6 +261,23 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
         floatingBallColorInt = 0
         floatingBallColumn = -1
 
+        viewModelScope.launch (Dispatchers.IO){
+            addSnapshotToHistory()
+            setMode(GameUIState.GameMode.UpdatedGameBoard)
+        }
+    }
+
+    /**
+     * User revert to last move. Undo operation
+     */
+    fun userRevertToPreviousMove()
+    {
+        val moveCount = _moveHistory.count()
+        if (moveCount < 2) return
+
+        val prevGameSnapshot = _moveHistory[moveCount -2]
+        updateGameFromSnapshot(prevGameSnapshot)
+        _moveHistory.removeAt(moveCount - 1)
         setMode(GameUIState.GameMode.UpdatedGameBoard)
     }
 
@@ -280,6 +306,8 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      */
     fun newGame()
     {
+        _moveHistory.clear()
+
         resetToWinningGameBoard()
         repeat(100) {
             makeOneRandomMove()
@@ -287,9 +315,9 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
         packBoard()
 
         viewModelScope.launch (Dispatchers.IO){
-            saveGameBoardToFile()
+            addSnapshotToHistory()
+            setMode(GameUIState.GameMode.UpdatedGameBoard)
         }
-        setMode(GameUIState.GameMode.UpdatedGameBoard)
     }
 
     /**
@@ -666,35 +694,24 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     }
 
     /**************** File operation routines *************************/
-    private var _gameFile : File? = null
+    private var _historyFile : File? = null
 
-    /**
-     * Set the game file
-     *
-     * @param file Game file
-     */
-    private fun setGameFile(file: File)
+    private fun setHistoryFile(file: File)
     {
-        _gameFile = file
+        _historyFile = file
     }
 
     /**
-     * Same the game to the file
+     * Save the entire game history to file
      */
-    private fun saveGameBoardToFile() {
-        if (_gameFile == null) return
+    private fun saveGameHistoryToFile()
+    {
+        if (_historyFile == null) return
 
         try {
             val format = Json { prettyPrint = true }
-            val ballList = mutableListOf<Int>()
-            for (curCol in 0..<Global.MAX_COLUMNS) {
-                for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
-                    ballList += gameBoard[curCol][curSlot]
-                }
-            }
-
-            val output = format.encodeToString(ballList)
-            val writer = FileWriter(_gameFile)
+            val output = format.encodeToString(_moveHistory)
+            val writer = FileWriter(_historyFile)
             writer.write(output)
             writer.close()
         } catch (e: SerializationException) {
@@ -709,25 +726,28 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
     }
 
     /**
-     * Load the start of the game
+     * Load the saved history from file
      */
-    private fun loadGameBoardFromFile()
+    private fun loadHistoryFromFile()
     {
-        if (_gameFile == null) return
+        if (_historyFile == null) return
 
         try {
-            val reader = FileReader(_gameFile)
+            val reader = FileReader(_historyFile)
             val data = reader.readText()
             reader.close()
 
-            val ballList = Json.decodeFromString<List<Int>>(data)
-            var index = 0
-            for (curCol in 0..<Global.MAX_COLUMNS) {
-                for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
-                    gameBoard[curCol][curSlot] = ballList[index]
-                    index++
+            val snapshotList = Json.decodeFromString<List<MutableIntList>>(data)
+            _moveHistory.clear()
+
+            snapshotList.forEach { curSnapshot ->
+                val newGameSnapshot: gameSnapshot = mutableIntListOf()
+                curSnapshot.forEach { curBallColor ->
+                    newGameSnapshot.add(curBallColor)
                 }
+                _moveHistory.add(newGameSnapshot)
             }
+
         } catch (e: SerializationException) {
             Log.i(Global.DEBUG_PREFIX, "Serialization error. Unable to decode ball list when loading the game file. Reason: ${e.message}")
         } catch (e: IllegalArgumentException) {
@@ -743,10 +763,61 @@ class GameViewModel(gGameFile: File, gHistFile: File) : ViewModel() {
      * Reset the game. Retrieve from saved game
      */
     fun resetGame() {
-        viewModelScope.launch(Dispatchers.IO) {
-            loadGameBoardFromFile()
-            setMode(GameUIState.GameMode.UpdatedGameBoard)
+        if (_moveHistory.isEmpty()) return
+
+        val firstSnapshot = _moveHistory[0]
+        var index = 0
+        for (curCol in 0..<Global.MAX_COLUMNS) {
+            for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
+                gameBoard[curCol][curSlot] = firstSnapshot[index]
+                index++
+            }
         }
+        _moveHistory.clear()
+        _moveHistory.add(firstSnapshot)
+        setMode(GameUIState.GameMode.UpdatedGameBoard)
+    }
+
+    /**
+     * Create game snapshot
+     */
+    private fun createGameSnapshot(): gameSnapshot
+    {
+        val snapshot : MutableIntList = mutableIntListOf()
+        for (curCol in 0..<Global.MAX_COLUMNS) {
+            for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
+                snapshot += gameBoard[curCol][curSlot]
+            }
+        }
+        return snapshot
+    }
+    
+    /**
+     * Restore game from snapshot
+     *
+     * @param snapshot Specified game snapshot
+     */
+    private fun updateGameFromSnapshot(snapshot: gameSnapshot)
+    {
+        var index = 0
+        for (curCol in 0..<Global.MAX_COLUMNS) {
+            for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
+                gameBoard[curCol][curSlot] = snapshot[index]
+                index++
+            }
+        }
+    }
+
+    /**
+     * Create a snapshot based on current state of game and add it to
+     * history records
+     */
+    private fun addSnapshotToHistory()
+    {
+        val curGameSnapshot = createGameSnapshot()
+        _moveHistory.add(curGameSnapshot)
+
+        saveGameHistoryToFile()
     }
 }
 
