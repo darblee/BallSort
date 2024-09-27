@@ -101,7 +101,6 @@ class GameViewModel(gHistFile: File) : ViewModel() {
      */
     private fun Int.hasOpenSlot() = gameBoard[this][Global.MAX_SLOT_PER_COLUMN - 1] == 0
 
-
     /**
      * Determine if the column is shallow homogenous or not. A shallow homogenous column is a column that has
      * multiple balls with the same color on top
@@ -249,7 +248,7 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         floatingBallColumn = -1
 
         viewModelScope.launch (Dispatchers.IO){
-            addSnapshotToHistory()
+            addCurrentSnapshotToHistory()
             setMode(GameUIState.GameMode.UpdatedGameBoard)
         }
     }
@@ -282,7 +281,7 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         packBoard()
 
         viewModelScope.launch(Dispatchers.IO) {
-            addSnapshotToHistory()
+            addCurrentSnapshotToHistory()
             setMode(GameUIState.GameMode.UpdatedGameBoard)
         }
     }
@@ -305,6 +304,20 @@ class GameViewModel(gHistFile: File) : ViewModel() {
             ballColorInt = popColorInt(col)
             pushToFirstAvailableSlot(ballColorInt)
         }
+    }
+
+    /**
+     * Reset the game. Retrieve from saved game
+     */
+    fun resetGame() {
+        if (_moveHistory.isEmpty()) return
+
+        // Need to make a new copy of game snapshot
+        val firstSnapshot = (_moveHistory[0]).toMutableList()
+        updateGameFromSnapshot(firstSnapshot)
+        _moveHistory.clear()
+        _moveHistory.add(firstSnapshot)
+        setMode(GameUIState.GameMode.UpdatedGameBoard)
     }
 
     /**
@@ -544,6 +557,7 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         return count
     }
 
+
     /**
      * Push the ball onto the specified column
      *
@@ -641,7 +655,6 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         }
     }
 
-
     /*************** Set mode routines ***********************/
 
     /**
@@ -729,25 +742,6 @@ class GameViewModel(gHistFile: File) : ViewModel() {
     }
 
     /**
-     * Reset the game. Retrieve from saved game
-     */
-    fun resetGame() {
-        if (_moveHistory.isEmpty()) return
-
-        val firstSnapshot = _moveHistory[0]
-        var index = 0
-        for (curCol in 0..<Global.MAX_COLUMNS) {
-            for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
-                gameBoard[curCol][curSlot] = firstSnapshot[index]
-                index++
-            }
-        }
-        _moveHistory.clear()
-        _moveHistory.add(firstSnapshot)
-        setMode(GameUIState.GameMode.UpdatedGameBoard)
-    }
-
-    /**
      * Create game snapshot
      */
     private fun createGameSnapshot(): gameSnapshot
@@ -781,7 +775,7 @@ class GameViewModel(gHistFile: File) : ViewModel() {
      * Create a snapshot based on current state of game and add it to
      * history records
      */
-    private fun addSnapshotToHistory()
+    private fun addCurrentSnapshotToHistory()
     {
         val curGameSnapshot = createGameSnapshot()
         _moveHistory.add(curGameSnapshot)
