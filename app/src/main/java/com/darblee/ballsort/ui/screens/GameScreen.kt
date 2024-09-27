@@ -1,6 +1,9 @@
 package com.darblee.ballsort.ui.screens
 
 import android.util.Log
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -11,12 +14,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,16 +40,19 @@ import com.darblee.ballsort.ui.GameUIState
 import com.darblee.ballsort.ui.theme.colorList
 import com.darblee.ballsort.utilities.click
 import java.io.File
+import kotlin.system.exitProcess
 
 @Composable
 fun GameScreen(modifier: Modifier = Modifier) {
-    var hintBallRec : GameUIState.GameMode.ShowHint ?= null
-    var noWinnableMove by remember {  mutableStateOf( false ) }
-    var showNoWinnableMoveDialogBox by remember { mutableStateOf(false) }
-    var initializing = false
     var announceVictory = false
     var gridChange = false
     var popBall = false
+
+    var backPressed by remember { mutableStateOf(false) }
+    BackPressHandler(onBackPressed = {backPressed = true})
+    if (backPressed) {
+        exitProcess(1)
+    }
 
     val historyFile = File(LocalContext.current.filesDir, Global.GAME_HISTORY_FILENAME)
 
@@ -60,7 +67,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
         // After the completion of file loading, it will set to "UpdatedGameBoard" mode.
         GameUIState.GameMode.Initialization -> {
             Log.i("Game Recompose: ", "${gameUIState.mode} : Initializing...")
-            initializing = true
             gridChange = true
 
         }
@@ -88,16 +94,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
             gridChange = true
             popBall = true
         }
-
-        GameUIState.GameMode.ShowHint -> {
-            Log.i(
-                "Game Recompose: ",
-                "${gameUIState.mode} : Show hint by do a shadow ball movement "
-            )
-            hintBallRec = gameUIState.mode.let {
-                GameUIState.GameMode.ShowHint
-            }
-        }
     }
 
     val view = LocalView.current
@@ -106,12 +102,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
-
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(5.dp),
+                .padding(top = 30.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             Button(onClick = {
@@ -154,9 +149,9 @@ fun DrawGameBoard(
     val verticalMidpoint = (gVerticalSpacing * 2) + columnLength
     val drawBoardToggle = remember { mutableStateOf(true) }
 
-    if (popBall) AnimatePopballSetup()
+    if (popBall) animatePopBallSetup()
 
-    Box() {
+    Box {
         val view = LocalView.current
 
         Canvas(
@@ -223,7 +218,7 @@ fun DrawGameBoard(
                     }
                 }
                 if (popBall) {
-                    animatePopballPerform(this)
+                    animatePopBallPerform(this)
                 }
             }
         }
@@ -283,7 +278,7 @@ fun yDistance(slot: Int): Float
 /**
  *
  */
-private fun AnimatePopballSetup()
+private fun animatePopBallSetup()
 {
 
 }
@@ -291,12 +286,45 @@ private fun AnimatePopballSetup()
 /**
  *
  */
-private fun animatePopballPerform(drawScope: DrawScope)
+private fun animatePopBallPerform(drawScope: DrawScope)
 {
     drawBall(drawScope, gGameViewModel.floatingBallColumn, -1)
     gGameViewModel.readyToPushBall()
 }
 
+/**
+ * BackPressHandler is used to intercept back press
+ *
+ * When doing back press on main screen, need to confirm with the user whether
+ * it should exit the app or not. It uses the [BackPressHandler] function.
+ *
+ * We created [OnBackPressedCallback] and add it to the onBackPressDispatcher
+ * that controls dispatching system back presses. We enable the callback whenever
+ * our Composable is recomposed, which disables other internal callbacks responsible
+ * for back press handling. The callback is added on any lifecycle owner change and removed
+ * on dispose.
+ */
+@Composable
+fun BackPressHandler(
+    backPressedDispatcher: OnBackPressedDispatcher? =
+        LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher,
+    onBackPressed: () -> Unit
+) {
+    val currentOnBackPressed by rememberUpdatedState(newValue = onBackPressed)
+
+    val backCallback = remember {
+        object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                currentOnBackPressed()
+            }
+        }
+    }
+
+    DisposableEffect(key1 = backPressedDispatcher) {
+        backPressedDispatcher?.addCallback(backCallback)
+        onDispose { backCallback.remove() }
+    }
+}
 
 
 @Preview(device = "spec:id=reference_phone,shape=Normal,width=411,height=891,unit=dp,dpi=420")

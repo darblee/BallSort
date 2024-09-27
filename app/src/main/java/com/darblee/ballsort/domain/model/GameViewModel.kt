@@ -79,18 +79,6 @@ class GameViewModel(gHistFile: File) : ViewModel() {
 
 
     /**
-     * Determine if the column is full or not
-     *
-     * @return
-     * - `True` column is empty
-     * - `false` column is NOT empty
-     */
-    fun columnIsFull(col: Int): Boolean
-    {
-        return (col.isFull())
-    }
-
-    /**
      * Game has floating ball and is ready to get push to a new column
      */
     fun hasFloatingBall(): Boolean
@@ -278,26 +266,6 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         updateGameFromSnapshot(prevGameSnapshot)
         _moveHistory.removeAt(moveCount - 1)
         setMode(GameUIState.GameMode.UpdatedGameBoard)
-    }
-
-    /**
-     * Determine whether it can safely exit the GameViewModel
-     *
-     * @return
-     * - `true` Clean-up is done. It is safe to exit the view model
-     * - `false` Unable to clean-up or in a middle of doing something. Do not exit the view model
-     */
-    fun canExitGameScreen(): Boolean {
-        return when (gameUIState.value.mode) {
-            GameUIState.GameMode.Initialization -> false
-            GameUIState.GameMode.WonGame -> false
-            GameUIState.GameMode.UpdatedGameBoard -> true
-            GameUIState.GameMode.WaitingToPushBall -> true
-            GameUIState.GameMode.PopBall -> true
-            GameUIState.GameMode.ShowHint -> {
-                true
-            }
-        }
     }
 
     /**
