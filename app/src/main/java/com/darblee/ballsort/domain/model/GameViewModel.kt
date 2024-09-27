@@ -192,8 +192,16 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[Global.MAX_COLUMNS-2][curSlot] = 0
         for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) gameBoard[Global.MAX_COLUMNS-1][curSlot] = 0
 
-        floatingBallColorInt = 0
+        resetFloatingBall()
+    }
 
+
+    /**
+     * Remove any floating ball condition
+     */
+    private fun resetFloatingBall()
+    {
+        floatingBallColorInt = 0
         floatingBallColumn = -1
     }
 
@@ -244,9 +252,6 @@ class GameViewModel(gHistFile: File) : ViewModel() {
 
         pushColorInt(col, floatingBallColorInt)
 
-        floatingBallColorInt = 0
-        floatingBallColumn = -1
-
         viewModelScope.launch (Dispatchers.IO){
             addCurrentSnapshotToHistory()
             setMode(GameUIState.GameMode.UpdatedGameBoard)
@@ -258,6 +263,13 @@ class GameViewModel(gHistFile: File) : ViewModel() {
      */
     fun userRevertToPreviousMove()
     {
+        // If we have a floating ball, then the undo operation is to simply remove the floating ball
+        if (hasFloatingBall()) {
+            pushColorInt(floatingBallColumn, floatingBallColorInt)
+            setMode(GameUIState.GameMode.UpdatedGameBoard)
+            return
+        }
+
         val moveCount = _moveHistory.count()
         if (moveCount < 2) return
 
@@ -580,12 +592,14 @@ class GameViewModel(gHistFile: File) : ViewModel() {
 
         if (gameBoard[col][0] == 0) {
             gameBoard[col][0] = ballColorInt
+            resetFloatingBall()
             return (true)
         }
 
         if (gameBoard[col][1] == 0) {
             if ((soft) && (gameBoard[col][0] == ballColorInt)) return false
             gameBoard[col][1] = ballColorInt
+            resetFloatingBall()
             return (true)
         }
 
@@ -598,6 +612,7 @@ class GameViewModel(gHistFile: File) : ViewModel() {
 
 
             gameBoard[col][2] = ballColorInt
+            resetFloatingBall()
             return (true)
         }
 
@@ -609,6 +624,7 @@ class GameViewModel(gHistFile: File) : ViewModel() {
             if ((soft) && (isShallowHomogenous(col))) return false
 
             gameBoard[col][3] = ballColorInt
+            resetFloatingBall()
             return (true)
         }
         return (false)

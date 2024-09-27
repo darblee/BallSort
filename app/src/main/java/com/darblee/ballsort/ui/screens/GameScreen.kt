@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +33,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,6 +43,9 @@ import com.darblee.ballsort.gGameViewModel
 import com.darblee.ballsort.ui.GameUIState
 import com.darblee.ballsort.ui.theme.colorList
 import com.darblee.ballsort.utilities.click
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -128,7 +135,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 Text("Undo")
             }
         }
-        DrawGameBoard(Modifier, gridChange, popBall)
+        DrawGameBoard(Modifier, gridChange, popBall, announceVictory)
     }
 }
 
@@ -143,13 +150,25 @@ private var gVerticalSpacing = 200f
 fun DrawGameBoard(
     modifier: Modifier = Modifier,
     updatedGameBoard: Boolean,
-    popBall: Boolean, )
+    popBall: Boolean,
+    announceVictory: Boolean, )
 {
     val columnLength = gBallRadius * 10
     val verticalMidpoint = (gVerticalSpacing * 2) + columnLength
     val drawBoardToggle = remember { mutableStateOf(true) }
 
     if (popBall) animatePopBallSetup()
+
+    /**
+     * textMeasurer is used to draw text on canvas.  This is used for animated victory message.
+     */
+    val textMeasurer = rememberTextMeasurer()
+    val animatedVictoryMessage = remember { Animatable(initialValue = 0f) }
+    if (announceVictory) {
+        AnimateVictoryMessageSetup(animatedVictoryMessage)
+    } else {
+        AnimateVictoryMessageReset(animatedVictoryMessage)
+    }
 
     Box {
         val view = LocalView.current
@@ -222,6 +241,43 @@ fun DrawGameBoard(
                 }
             }
         }
+    }
+}
+
+/**
+ * Setup victory message animation. Define animation specification
+ *
+ * @param animateCtl Animate object that control animation state of the victory message
+ */
+@Composable
+private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVector1D>)
+{
+    // Run this set-up only once
+    LaunchedEffect(Unit) {
+        // Use coroutine to ensure both animation and sound happen in parallel
+        coroutineScope {
+            launch(Dispatchers.Main) {
+
+            }
+
+            launch(Dispatchers.Main) {
+
+            }
+        }
+    }
+}
+
+/**
+ * Stop and reset the victory animation control
+ *
+ * @param animateCtl Animate object that control animation state of the victory message
+ */
+@Composable
+private fun AnimateVictoryMessageReset(animateCtl: Animatable<Float, AnimationVector1D>)
+{
+    LaunchedEffect(Unit) {
+        animateCtl.stop()
+        animateCtl.snapTo(0f)
     }
 }
 
