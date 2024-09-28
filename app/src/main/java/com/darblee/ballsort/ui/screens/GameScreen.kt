@@ -6,6 +6,8 @@ import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -33,18 +35,27 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.darblee.ballsort.Global
 import com.darblee.ballsort.domain.model.GameViewModel
+import com.darblee.ballsort.gAudio_victory
 import com.darblee.ballsort.gGameViewModel
 import com.darblee.ballsort.ui.GameUIState
 import com.darblee.ballsort.ui.theme.colorList
 import com.darblee.ballsort.utilities.click
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.system.exitProcess
@@ -239,6 +250,13 @@ fun DrawGameBoard(
                 if (popBall) {
                     animatePopBallPerform(this)
                 }
+
+                if (announceVictory) {
+                    animateVictoryMsgInvoke(
+                        drawScope,
+                        animatedVictoryMessage,
+                        textMeasurer)
+                }
             }
         }
     }
@@ -257,13 +275,67 @@ private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVe
         // Use coroutine to ensure both animation and sound happen in parallel
         coroutineScope {
             launch(Dispatchers.Main) {
+                animateCtl.snapTo(0f)
+                animateCtl.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = 1500,
+                        easing = LinearOutSlowInEasing
+                    )
+                )
+                gGameViewModel.setModeUpdateGameBoard()
 
-            }
+                animateCtl.snapTo(0f)
+                animateCtl.stop()
+
+                // Pause for 0.5 second to allow user to see victory message before it disappear
+                delay(500)
+            }  // launch
 
             launch(Dispatchers.Main) {
-
+                gAudio_victory.start()
             }
         }
+    }
+}
+
+/**
+ * Perform the actual victory message animation
+ *
+ * @param drawScope Canvas to draw the text animation on
+ * @param animateCtl  Object that animation control state of the victory message
+ * @param textMeasurer Responsible for measuring a text in its entirety so that it
+ * can be drawn on the canvas (drawScope)
+ */
+private fun animateVictoryMsgInvoke(
+    drawScope: DrawScope,
+    animateCtl: Animatable<Float, AnimationVector1D>,
+    textMeasurer: TextMeasurer
+)
+{
+    val animationValue = animateCtl.value
+    with (drawScope) {
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+        val text = "You won!"
+        val animatedTextSize = 75 * animationValue
+        val textStyle = TextStyle(
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = animatedTextSize.sp
+        )
+        val textLayoutResult: TextLayoutResult =
+            textMeasurer.measure(text = AnnotatedString(text), style = textStyle)
+        val textSize = textLayoutResult.size
+        drawText(
+            textMeasurer = textMeasurer,
+            text = text,
+            topLeft = Offset(
+                x = (canvasWidth - textSize.width) * 0.5f, // in center
+                y = (canvasHeight * 0.25f)
+            ),
+            style = textStyle
+        )
     }
 }
 

@@ -254,7 +254,11 @@ class GameViewModel(gHistFile: File) : ViewModel() {
 
         viewModelScope.launch (Dispatchers.IO){
             addCurrentSnapshotToHistory()
-            setMode(GameUIState.GameMode.UpdatedGameBoard)
+
+            if (hasWon())
+                setMode(GameUIState.GameMode.WonGame)
+            else
+                setMode(GameUIState.GameMode.UpdatedGameBoard)
         }
     }
 
@@ -797,6 +801,39 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         _moveHistory.add(curGameSnapshot)
 
         saveGameHistoryToFile()
+    }
+
+
+    /**
+     * Indicate whether the game is winning state or not
+     *
+     * @return
+     * - `true` if it is in winning state
+     * - `false` if it is NOT in winning state
+     */
+    private fun hasWon(): Boolean
+    {
+        loop@ for (curCol in 0..<Global.MAX_COLUMNS) {
+
+            if (curCol.isEmpty()) continue@loop
+
+            if (curCol.isFull()) {
+                // Need to make sure all have the same color
+                if ((gameBoard[curCol][0] == gameBoard[curCol][1]) &&
+                    (gameBoard[curCol][0] == gameBoard[curCol][2]) &&
+                    (gameBoard[curCol][0] == gameBoard[curCol][3])) continue@loop
+            }
+            return (false)
+        }
+
+        return (true)
+    }
+
+    /**
+     * Set mode to "Update Game Board" mode]
+     */
+    fun setModeUpdateGameBoard() {
+        setMode(GameUIState.GameMode.UpdatedGameBoard)
     }
 }
 
