@@ -17,7 +17,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -131,19 +139,34 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 view.click()
                 gGameViewModel.newGame()
             }) {
-                Text("New Game")
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = "New game",
+                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                )
+                Text("New Game", style = MaterialTheme.typography.titleSmall)
             }
             Button(onClick = {
                 view.click()
                 gGameViewModel.resetGame()
             }) {
-                Text("Restart")
+                Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = "Restart",
+                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                )
+                Text("Restart", style = MaterialTheme.typography.titleSmall)
             }
             Button(onClick = {
                 view.click()
                 gGameViewModel.userRevertToPreviousMove()
             }) {
-                Text("Undo")
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Undo",
+                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                )
+                Text("Undo", style = MaterialTheme.typography.titleSmall)
             }
         }
         DrawGameBoard(Modifier, gridChange, popBall, announceVictory)
