@@ -177,16 +177,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
 private fun DrawButtons(undoButtonRequestState: Boolean)
 {
     Log.i(Global.DEBUG_PREFIX, "Draw Button called undoMade = $undoButtonRequestState")
-    var undoButtonState by remember { mutableStateOf(undoButtonRequestState) }
 
     val view = LocalView.current
-
-    if (undoButtonState == undoButtonRequestState) {
-        Log.i(Global.DEBUG_PREFIX, "No change to the undo button. It is currently in $undoButtonRequestState state")
-    } else {
-        undoButtonState = undoButtonRequestState
-        Log.i(Global.DEBUG_PREFIX, "Change to the undo button to $undoButtonRequestState")
-    }
 
     Row(
         modifier = Modifier
@@ -225,7 +217,7 @@ private fun DrawButtons(undoButtonRequestState: Boolean)
                 view.click()
                 gGameViewModel.userRevertToPreviousMove()
             },
-            enabled = undoButtonState
+            enabled = undoButtonRequestState
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
