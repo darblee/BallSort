@@ -251,8 +251,7 @@ class GameViewModel(gHistFile: File) : ViewModel() {
     /**
      * Select column to push onto
      */
-    fun userSelectColumnToPush(col: Int)
-    {
+    fun userSelectColumnToPush(col: Int) {
         if (col.isFull()) return
 
         val revertBackToSameColumn = (col == floatingBallColumn)
@@ -262,16 +261,19 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         // Check if user just want to undo the operation by putting
         // the ball back to the same slot. If so, then this is NOT
         // a new move. No need to add snapshot.
-        if (!revertBackToSameColumn) {
-            viewModelScope.launch(Dispatchers.IO) {
-                addCurrentSnapshotToHistory()
-            }
+        if (revertBackToSameColumn) {
+            setMode(GameUIState.GameMode.RevertMove)
+            return
         }
 
-        if (hasWon())
-            setMode(GameUIState.GameMode.WonGame)
-        else
-            setMode(GameUIState.GameMode.UpdatedGameBoard)
+        viewModelScope.launch(Dispatchers.IO) {
+            addCurrentSnapshotToHistory()
+
+            if (hasWon())
+                setMode(GameUIState.GameMode.WonGame)
+            else
+                setMode(GameUIState.GameMode.UpdatedGameBoard)
+        }
     }
 
     /**
@@ -303,7 +305,11 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         val prevGameSnapshot = _moveHistory[moveCount -2]
         updateGameFromSnapshot(prevGameSnapshot)
         _moveHistory.removeAt(moveCount - 1)
-        setMode(GameUIState.GameMode.UpdatedGameBoard)
+
+        viewModelScope.launch(Dispatchers.IO) {
+            saveGameHistoryToFile()
+            setMode(GameUIState.GameMode.RevertMove)
+        }
     }
 
     /**

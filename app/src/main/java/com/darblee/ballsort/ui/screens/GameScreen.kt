@@ -72,6 +72,7 @@ import kotlin.system.exitProcess
 fun GameScreen(modifier: Modifier = Modifier) {
     var announceVictory = false
     var gridChange = false
+    var undoMade = false
     var popBall = false
 
     var backPressed by remember { mutableStateOf(false) }
@@ -110,6 +111,15 @@ fun GameScreen(modifier: Modifier = Modifier) {
             gridChange = true
         }
 
+        GameUIState.GameMode.RevertMove -> {
+            Log.i(
+                "Game Recompose: ",
+                "${gameUIState.mode} : Revert move. Board has been modified. May need to refresh undo button"
+            )
+            gridChange = true
+            undoMade = true
+        }
+
         GameUIState.GameMode.WaitingToPushBall -> {
             popBall = true
             Log.i("Game Recompose: ", "${gameUIState.mode} : Ready to push ball")
@@ -122,61 +132,79 @@ fun GameScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    val view = LocalView.current
-
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 30.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            Button(
-                onClick = {
-                    view.click()
-                    gGameViewModel.newGame()
-                }
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = "New game",
-                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                )
-                Text("New Game", style = MaterialTheme.typography.titleSmall)
-            }
-            Button(
-                onClick = {
-                    view.click()
-                    gGameViewModel.resetGame()
-                }
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Refresh,
-                    contentDescription = "Restart",
-                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                )
-                Text("Restart", style = MaterialTheme.typography.titleSmall)
-            }
-            Button(
-                onClick = {
-                    view.click()
-                    gGameViewModel.userRevertToPreviousMove()
-                },
-                enabled = gGameViewModel.ableToUndo()
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Undo",
-                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                )
-                Text("Undo", style = MaterialTheme.typography.titleSmall)
-            }
-        }
+        DrawButtons(undoMade)
+
         DrawGameBoard(Modifier, gridChange, popBall, announceVictory)
+    }
+}
+
+/**
+ * Draw the buttons
+ */
+@Composable
+private fun DrawButtons(undoMade: Boolean)
+{
+    val drawUndoButtonToggle = remember { mutableStateOf(true) }
+
+    val view = LocalView.current
+
+    if (undoMade) {
+        // For recompose if undo button status has changed
+        drawUndoButtonToggle.value = !(drawUndoButtonToggle.value)
+
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 30.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        Button(
+            onClick = {
+                view.click()
+                gGameViewModel.newGame()
+            }
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Star,
+                contentDescription = "New game",
+                modifier = Modifier.size(SwitchDefaults.IconSize)
+            )
+            Text("New Game", style = MaterialTheme.typography.titleSmall)
+        }
+        Button(
+            onClick = {
+                view.click()
+                gGameViewModel.resetGame()
+            }
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Refresh,
+                contentDescription = "Restart",
+                modifier = Modifier.size(SwitchDefaults.IconSize)
+            )
+            Text("Restart", style = MaterialTheme.typography.titleSmall)
+        }
+        Button(
+            onClick = {
+                view.click()
+                gGameViewModel.userRevertToPreviousMove()
+            },
+            enabled = gGameViewModel.ableToUndo()
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Undo",
+                modifier = Modifier.size(SwitchDefaults.IconSize)
+            )
+            Text("Undo", style = MaterialTheme.typography.titleSmall)
+        }
     }
 }
 
@@ -188,7 +216,7 @@ private var gVerticalSpacing = 200f
  * Draw the game
  */
 @Composable
-fun DrawGameBoard(
+private fun DrawGameBoard(
     modifier: Modifier = Modifier,
     updatedGameBoard: Boolean,
     popBall: Boolean,

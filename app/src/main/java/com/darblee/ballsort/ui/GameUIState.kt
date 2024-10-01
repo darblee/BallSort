@@ -28,6 +28,7 @@ data class GameUIState(
 
         data object Initialization : GameMode()
         data object UpdatedGameBoard : GameMode()
+        data object RevertMove : GameMode()
         data object PopBall : GameMode()
         data object WonGame : GameMode()
         data object WaitingToPushBall : GameMode()
