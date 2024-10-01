@@ -27,8 +27,11 @@ data class GameUIState(
     sealed class GameMode {
 
         data object Initialization : GameMode()
+        data object NewGame: GameMode()
         data object UpdatedGameBoard : GameMode()
-        data object RevertMove : GameMode()
+        data object ResetGame: GameMode()
+        data object RevertMoveEnableUndo : GameMode()
+        data object RevertMoveDisableUndo : GameMode()
         data object PopBall : GameMode()
         data object WonGame : GameMode()
         data object WaitingToPushBall : GameMode()

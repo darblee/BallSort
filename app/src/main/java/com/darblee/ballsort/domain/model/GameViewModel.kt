@@ -262,7 +262,11 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         // the ball back to the same slot. If so, then this is NOT
         // a new move. No need to add snapshot.
         if (revertBackToSameColumn) {
-            setMode(GameUIState.GameMode.RevertMove)
+            if (ableToUndo())
+                setMode(GameUIState.GameMode.RevertMoveEnableUndo)
+            else
+                setMode(GameUIState.GameMode.RevertMoveDisableUndo)
+
             return
         }
 
@@ -308,7 +312,10 @@ class GameViewModel(gHistFile: File) : ViewModel() {
 
         viewModelScope.launch(Dispatchers.IO) {
             saveGameHistoryToFile()
-            setMode(GameUIState.GameMode.RevertMove)
+            if (ableToUndo())
+                setMode(GameUIState.GameMode.RevertMoveEnableUndo)
+            else
+                setMode(GameUIState.GameMode.RevertMoveDisableUndo)
         }
     }
 
@@ -327,7 +334,7 @@ class GameViewModel(gHistFile: File) : ViewModel() {
 
         viewModelScope.launch(Dispatchers.IO) {
             addCurrentSnapshotToHistory()
-            setMode(GameUIState.GameMode.UpdatedGameBoard)
+            setMode(GameUIState.GameMode.NewGame)
         }
     }
 
@@ -362,7 +369,11 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         updateGameFromSnapshot(firstSnapshot)
         _moveHistory.clear()
         _moveHistory.add(firstSnapshot)
-        setMode(GameUIState.GameMode.UpdatedGameBoard)
+
+        viewModelScope.launch(Dispatchers.IO) {
+            saveGameHistoryToFile()
+            setMode(GameUIState.GameMode.ResetGame)
+        }
     }
 
     /**

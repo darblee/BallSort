@@ -72,8 +72,9 @@ import kotlin.system.exitProcess
 fun GameScreen(modifier: Modifier = Modifier) {
     var announceVictory = false
     var gridChange = false
-    var undoMade = false
     var popBall = false
+
+    var undoButtonState by remember { mutableStateOf(true) }
 
     var backPressed by remember { mutableStateOf(false) }
     BackPressHandler(onBackPressed = {backPressed = true})
@@ -93,42 +94,68 @@ fun GameScreen(modifier: Modifier = Modifier) {
         // WHen singleton object class GameViewModel get instantiated, it will load the game files
         // After the completion of file loading, it will set to "UpdatedGameBoard" mode.
         GameUIState.GameMode.Initialization -> {
-            Log.i("Game Recompose: ", "${gameUIState.mode} : Initializing...")
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Initializing...")
             gridChange = true
+            undoButtonState = gGameViewModel.ableToUndo()
+        }
 
+        GameUIState.GameMode.NewGame -> {
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : New Game")
+            announceVictory = false
+            undoButtonState = false
+        }
+
+        GameUIState.GameMode.ResetGame -> {
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Restart Game")
+            announceVictory = false
+            undoButtonState = false
         }
 
         GameUIState.GameMode.WonGame -> {
-            Log.i("Game Recompose: ", "${gameUIState.mode} : Announce Victory")
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Announce Victory")
             announceVictory = true
+            undoButtonState = gGameViewModel.ableToUndo()
         }
 
         GameUIState.GameMode.UpdatedGameBoard -> {
             Log.i(
-                "Game Recompose: ",
-                "${gameUIState.mode} : Board has been modified. Typically start a new user move."
+                Global.DEBUG_PREFIX,
+                "Recompose - ${gameUIState.mode} : Board has been modified. Typically start a new user move."
             )
             gridChange = true
+            undoButtonState = gGameViewModel.ableToUndo()
         }
 
-        GameUIState.GameMode.RevertMove -> {
+        GameUIState.GameMode.RevertMoveEnableUndo -> {
             Log.i(
-                "Game Recompose: ",
-                "${gameUIState.mode} : Revert move. Board has been modified. May need to refresh undo button"
+                Global.DEBUG_PREFIX,
+                "Recompose - ${gameUIState.mode} : Revert move. Board has been modified. May need to refresh undo button"
             )
             gridChange = true
-            undoMade = true
+            undoButtonState = true
+        }
+
+        GameUIState.GameMode.RevertMoveDisableUndo -> {
+            Log.i(
+                Global.DEBUG_PREFIX,
+                "Recompose - ${gameUIState.mode} : Revert move. Board has been modified. May need to refresh undo button"
+            )
+            gridChange = true
+            undoButtonState = false
         }
 
         GameUIState.GameMode.WaitingToPushBall -> {
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Ready to push ball")
             popBall = true
-            Log.i("Game Recompose: ", "${gameUIState.mode} : Ready to push ball")
+            undoButtonState = gGameViewModel.ableToUndo()
+
         }
 
         GameUIState.GameMode.PopBall -> {
-            Log.i("Game Recompose: ", "${gameUIState.mode} : Process popping ball")
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Process popping ball")
             gridChange = true
             popBall = true
+            undoButtonState = gGameViewModel.ableToUndo()
         }
     }
 
@@ -137,7 +164,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        DrawButtons(undoMade)
+        DrawButtons(undoButtonState)
 
         DrawGameBoard(Modifier, gridChange, popBall, announceVictory)
     }
@@ -147,16 +174,18 @@ fun GameScreen(modifier: Modifier = Modifier) {
  * Draw the buttons
  */
 @Composable
-private fun DrawButtons(undoMade: Boolean)
+private fun DrawButtons(undoButtonRequestState: Boolean)
 {
-    val drawUndoButtonToggle = remember { mutableStateOf(true) }
+    Log.i(Global.DEBUG_PREFIX, "Draw Button called undoMade = $undoButtonRequestState")
+    var undoButtonState by remember { mutableStateOf(undoButtonRequestState) }
 
     val view = LocalView.current
 
-    if (undoMade) {
-        // For recompose if undo button status has changed
-        drawUndoButtonToggle.value = !(drawUndoButtonToggle.value)
-
+    if (undoButtonState == undoButtonRequestState) {
+        Log.i(Global.DEBUG_PREFIX, "No change to the undo button. It is currently in $undoButtonRequestState state")
+    } else {
+        undoButtonState = undoButtonRequestState
+        Log.i(Global.DEBUG_PREFIX, "Change to the undo button to $undoButtonRequestState")
     }
 
     Row(
@@ -196,7 +225,7 @@ private fun DrawButtons(undoMade: Boolean)
                 view.click()
                 gGameViewModel.userRevertToPreviousMove()
             },
-            enabled = gGameViewModel.ableToUndo()
+            enabled = undoButtonState
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -222,9 +251,11 @@ private fun DrawGameBoard(
     popBall: Boolean,
     announceVictory: Boolean, )
 {
+    Log.i(Global.DEBUG_PREFIX, "Draw board called. updateGameBoard = $updatedGameBoard")
+
     val columnLength = gBallRadius * 10
     val verticalMidpoint = (gVerticalSpacing * 2) + columnLength
-    val drawBoardToggle = remember { mutableStateOf(true) }
+    var drawBoardToggle by remember { mutableStateOf(true) }
 
     if (popBall) animatePopBallSetup()
 
@@ -291,7 +322,7 @@ private fun DrawGameBoard(
 
                     if (updatedGameBoard) {
                         // Force recompose to redraw canvas-based game board
-                        drawBoardToggle.value = !drawBoardToggle.value
+                        drawBoardToggle = !drawBoardToggle
                     }
 
                     drawLine(
