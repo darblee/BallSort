@@ -112,7 +112,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
         GameUIState.GameMode.WaitingToPushBall -> {
             popBall = true
-            Log.i(Global.DEBUG_PREFIX, "${gameUIState.mode} : Ready to push ball")
+            Log.i("Game Recompose: ", "${gameUIState.mode} : Ready to push ball")
         }
 
         GameUIState.GameMode.PopBall -> {
@@ -135,10 +135,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 .padding(top = 30.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            Button(onClick = {
-                view.click()
-                gGameViewModel.newGame()
-            }) {
+            Button(
+                onClick = {
+                    view.click()
+                    gGameViewModel.newGame()
+                }
+            ) {
                 Icon(
                     imageVector = Icons.Filled.Star,
                     contentDescription = "New game",
@@ -146,10 +148,12 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 )
                 Text("New Game", style = MaterialTheme.typography.titleSmall)
             }
-            Button(onClick = {
-                view.click()
-                gGameViewModel.resetGame()
-            }) {
+            Button(
+                onClick = {
+                    view.click()
+                    gGameViewModel.resetGame()
+                }
+            ) {
                 Icon(
                     imageVector = Icons.Filled.Refresh,
                     contentDescription = "Restart",
@@ -157,10 +161,13 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 )
                 Text("Restart", style = MaterialTheme.typography.titleSmall)
             }
-            Button(onClick = {
-                view.click()
-                gGameViewModel.userRevertToPreviousMove()
-            }) {
+            Button(
+                onClick = {
+                    view.click()
+                    gGameViewModel.userRevertToPreviousMove()
+                },
+                enabled = gGameViewModel.ableToUndo()
+            ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Undo",

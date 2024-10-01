@@ -175,7 +175,12 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             setHistoryFile(gHistFile)
             loadHistoryFromFile()
-            setMode(GameUIState.GameMode.Initialization)
+
+            if (_moveHistory.isEmpty()) {
+                newGame()
+            } else {
+                setMode(GameUIState.GameMode.Initialization)
+            }
         }
     }
 
@@ -250,16 +255,34 @@ class GameViewModel(gHistFile: File) : ViewModel() {
     {
         if (col.isFull()) return
 
+        val revertBackToSameColumn = (col == floatingBallColumn)
+
         pushColorInt(col, floatingBallColorInt)
 
-        viewModelScope.launch (Dispatchers.IO){
-            addCurrentSnapshotToHistory()
-
-            if (hasWon())
-                setMode(GameUIState.GameMode.WonGame)
-            else
-                setMode(GameUIState.GameMode.UpdatedGameBoard)
+        // Check if user just want to undo the operation by putting
+        // the ball back to the same slot. If so, then this is NOT
+        // a new move. No need to add snapshot.
+        if (!revertBackToSameColumn) {
+            viewModelScope.launch(Dispatchers.IO) {
+                addCurrentSnapshotToHistory()
+            }
         }
+
+        if (hasWon())
+            setMode(GameUIState.GameMode.WonGame)
+        else
+            setMode(GameUIState.GameMode.UpdatedGameBoard)
+    }
+
+    /**
+     * Determine if user is able to perform undo operation
+     */
+    fun ableToUndo(): Boolean
+    {
+        if (hasFloatingBall()) return true
+
+        val moveCount = _moveHistory.count()
+        return (moveCount > 1)
     }
 
     /**
@@ -613,7 +636,6 @@ class GameViewModel(gHistFile: File) : ViewModel() {
 
             // (soft push only) If we are attempting to add ball on top of homogenous column, then reject it
             if ((soft) && (gameBoard[col][0] == gameBoard[col][1])) return false
-
 
             gameBoard[col][2] = ballColorInt
             resetFloatingBall()
