@@ -103,12 +103,15 @@ fun GameScreen(modifier: Modifier = Modifier) {
             Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : New Game")
             announceVictory = false
             undoButtonState = false
+            gridChange = true
         }
 
         GameUIState.GameMode.ResetGame -> {
             Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Restart Game")
             announceVictory = false
             undoButtonState = false
+            gridChange = true
+
         }
 
         GameUIState.GameMode.WonGame -> {
@@ -148,7 +151,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
             Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Ready to push ball")
             popBall = true
             undoButtonState = gGameViewModel.ableToUndo()
-
         }
 
         GameUIState.GameMode.PopBall -> {
