@@ -280,8 +280,12 @@ private fun DrawGameBoard(
                                 xCol = (Global.MAX_COLUMNS - 1)
                             }
 
+                            val middleColNum = (Global.MAX_COLUMNS / 2) - 1
+
                             val column = if (tapOffset.y > verticalMidpoint) {
                                 xCol + (Global.MAX_COLUMNS / 2)
+                            } else if ((tapOffset.y < verticalMidpoint) && (xCol >= middleColNum )) {
+                                middleColNum
                             } else {
                                 xCol
                             }
