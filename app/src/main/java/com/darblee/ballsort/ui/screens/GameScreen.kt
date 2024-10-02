@@ -251,7 +251,9 @@ private fun DrawGameBoard(
     val verticalMidpoint = (gVerticalSpacing * 2) + columnLength
     var drawBoardToggle by remember { mutableStateOf(true) }
 
-    if (popBall) animatePopBallSetup()
+    if (popBall) animatePopBallSetup(
+        // TODO: Set-up to do ball movement animation
+    )
 
     /**
      * textMeasurer is used to draw text on canvas.  This is used for animated victory message.
@@ -274,9 +276,15 @@ private fun DrawGameBoard(
                     detectTapGestures(
                         onTap = { tapOffset ->
                             var xCol = ((tapOffset.x - (gWidthSpacing / 2)) / gWidthSpacing).toInt()
-                            if (xCol > (Global.MAX_COLUMNS - 1))  { xCol = (Global.MAX_COLUMNS - 1) }
+                            if (xCol > (Global.MAX_COLUMNS - 1)) {
+                                xCol = (Global.MAX_COLUMNS - 1)
+                            }
 
-                            val column = if (tapOffset.y > verticalMidpoint) { xCol + (Global.MAX_COLUMNS / 2) } else { xCol }
+                            val column = if (tapOffset.y > verticalMidpoint) {
+                                xCol + (Global.MAX_COLUMNS / 2)
+                            } else {
+                                xCol
+                            }
 
                             if (gGameViewModel.hasFloatingBall()) {
 
@@ -287,8 +295,7 @@ private fun DrawGameBoard(
                                 }
 
                                 // Only push if this is valid column to move to
-                                if (gGameViewModel.validColumnToMoveTo(column))
-                                {
+                                if (gGameViewModel.validColumnToMoveTo(column)) {
                                     view.click()
                                     gGameViewModel.userSelectColumnToPush(column)
                                 }
@@ -486,16 +493,17 @@ fun yDistance(slot: Int): Float
 
 /********************* Animation Routine ************************************/
 
+
 /**
- *
+ *  Setup to do the ball animation
  */
 private fun animatePopBallSetup()
 {
-
+// TODO: Setup the ball animation specification
 }
 
 /**
- *
+ * Move the pop to the desired solution
  */
 private fun animatePopBallPerform(drawScope: DrawScope)
 {
