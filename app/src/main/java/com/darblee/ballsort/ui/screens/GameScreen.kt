@@ -178,8 +178,6 @@ fun GameScreen(modifier: Modifier = Modifier) {
 @Composable
 private fun DrawButtons(undoButtonRequestState: Boolean)
 {
-    Log.i(Global.DEBUG_PREFIX, "Draw Button called undoMade = $undoButtonRequestState")
-
     val view = LocalView.current
 
     Row(

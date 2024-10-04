@@ -174,12 +174,15 @@ class GameViewModel(gHistFile: File) : ViewModel() {
     init {
         viewModelScope.launch(Dispatchers.IO) {
             setHistoryFile(gHistFile)
-            loadHistoryFromFile()
 
-            if (_moveHistory.isEmpty()) {
-                newGame()
-            } else {
-                setMode(GameUIState.GameMode.Initialization)
+            viewModelScope.launch(Dispatchers.IO) {
+
+                loadHistoryFromFile()
+                if (_moveHistory.isEmpty()) {
+                    newGame()
+                } else {
+                    setMode(GameUIState.GameMode.UpdatedGameBoard)
+                }
             }
         }
     }
@@ -270,14 +273,13 @@ class GameViewModel(gHistFile: File) : ViewModel() {
             return
         }
 
-        viewModelScope.launch(Dispatchers.IO) {
-            addCurrentSnapshotToHistory()
+        addCurrentSnapshotToHistory()
 
-            if (hasWon())
-                setMode(GameUIState.GameMode.WonGame)
-            else
-                setMode(GameUIState.GameMode.UpdatedGameBoard)
-        }
+        if (hasWon())
+            setMode(GameUIState.GameMode.WonGame)
+        else
+            setMode(GameUIState.GameMode.UpdatedGameBoard)
+
     }
 
     /**
@@ -332,10 +334,8 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         }
         packBoard()
 
-        viewModelScope.launch(Dispatchers.IO) {
-            addCurrentSnapshotToHistory()
-            setMode(GameUIState.GameMode.NewGame)
-        }
+        addCurrentSnapshotToHistory()
+        setMode(GameUIState.GameMode.NewGame)
     }
 
     /**
@@ -839,7 +839,9 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         val curGameSnapshot = createGameSnapshot()
         _moveHistory.add(curGameSnapshot)
 
-        saveGameHistoryToFile()
+        viewModelScope.launch(Dispatchers.IO) {
+            saveGameHistoryToFile()
+        }
     }
 
 
