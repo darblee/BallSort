@@ -68,6 +68,16 @@ import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.system.exitProcess
 
+/**
+ * The main entry point for the Ball Sort game screen.
+ *
+ * This composable manages the game state and UI layout, coordinating between the
+ * [GameViewModel] and the visual components. It handles different game modes
+ * (Initialization, New Game, Reset, Victory, etc.), responds to back press events,
+ * and renders both the control buttons and the interactive game board.
+ *
+ * @param modifier The modifier to be applied to the root Column layout.
+ */
 @Composable
 fun GameScreen(modifier: Modifier = Modifier) {
     var announceVictory = false
