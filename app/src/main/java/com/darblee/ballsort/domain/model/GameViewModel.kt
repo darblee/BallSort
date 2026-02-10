@@ -659,14 +659,14 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         if (gameBoard[col][0] == 0) {
             gameBoard[col][0] = ballColorInt
             resetFloatingBall()
-            return (true)
+            return true
         }
 
         if (gameBoard[col][1] == 0) {
             if ((soft) && (gameBoard[col][0] == ballColorInt)) return false
             gameBoard[col][1] = ballColorInt
             resetFloatingBall()
-            return (true)
+            return true
         }
 
         if (gameBoard[col][2] == 0) {
@@ -678,7 +678,7 @@ class GameViewModel(gHistFile: File) : ViewModel() {
 
             gameBoard[col][2] = ballColorInt
             resetFloatingBall()
-            return (true)
+            return true
         }
 
         if (gameBoard[col][3] == 0) {
@@ -690,9 +690,9 @@ class GameViewModel(gHistFile: File) : ViewModel() {
 
             gameBoard[col][3] = ballColorInt
             resetFloatingBall()
-            return (true)
+            return true
         }
-        return (false)
+        return false
     }
 
 
@@ -719,21 +719,6 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         }
 
         return (0)
-    }
-
-
-    /**
-     * Print the game board. This is used primarily for debugging purposes
-     */
-    private fun printGameBoardInt()
-    {
-        Log.i(Global.DEBUG_PREFIX, "======= Game Board =========")
-        for (curCol in 0..< Global.MAX_COLUMNS) {
-            for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) {
-                val ballColor = gameBoard[curCol][curSlot]
-                Log.i(Global.DEBUG_PREFIX, "$curCol, $curSlot = $ballColor")
-            }
-        }
     }
 
     /*************** Set mode routines ***********************/
@@ -886,10 +871,10 @@ class GameViewModel(gHistFile: File) : ViewModel() {
                     (gameBoard[curCol][0] == gameBoard[curCol][2]) &&
                     (gameBoard[curCol][0] == gameBoard[curCol][3])) continue@loop
             }
-            return (false)
+            return false
         }
 
-        return (true)
+        return true
     }
 
     /**

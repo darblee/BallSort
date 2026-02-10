@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -270,7 +271,6 @@ private fun DrawGameBoard(
 
     val columnLength = gBallRadius * 10
     val verticalMidpoint = (gVerticalSpacing * 2) + columnLength
-    var drawBoardToggle by remember { mutableStateOf(true) }
 
     if (popBall) animatePopBallSetup(
         // TODO: Set-up to do ball movement animation
@@ -285,6 +285,12 @@ private fun DrawGameBoard(
         AnimateVictoryMessageSetup(animatedVictoryMessage, gameViewModel)
     } else {
         AnimateVictoryMessageReset(animatedVictoryMessage)
+    }
+
+    if (popBall && updatedGameBoard) {
+        SideEffect {
+            gameViewModel.readyToPushBall()
+        }
     }
 
     Box {
@@ -345,11 +351,6 @@ private fun DrawGameBoard(
                         verticalMidpoint
                     }
                     startX = ((curCol % (Global.MAX_COLUMNS / 2)) + 1) * gWidthSpacing
-
-                    if (updatedGameBoard) {
-                        // Force recompose to redraw canvas-based game board
-                        drawBoardToggle = !drawBoardToggle
-                    }
 
                     drawLine(
                         color = Color.White,
@@ -558,7 +559,6 @@ private fun animatePopBallSetup()
 private fun animatePopBallPerform(drawScope: DrawScope, gameViewModel: GameViewModel)
 {
     drawBall(drawScope, gameViewModel.floatingBallColumn, -1, gameViewModel)
-    gameViewModel.readyToPushBall()
 }
 
 /**
