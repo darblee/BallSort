@@ -453,11 +453,3 @@ fun BackPressHandler(
         onDispose { backCallback.remove() }
     }
 }
-
-
-@Preview(device = "spec:id=reference_phone,shape=Normal,width=411,height=891,unit=dp,dpi=420")
-@Composable
-fun Test()
-{
-    GameScreen()
-}
