@@ -7,7 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.darblee.ballsort.Global
 import com.darblee.ballsort.ui.GameUIState
 import com.darblee.ballsort.ui.theme.colorList
-import com.darblee.ballsort.utilities.SingleArgSingletonHolder
+import androidx.lifecycle.ViewModelProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,7 +35,16 @@ typealias gameSnapshot = MutableList<Int>
  * @param gHistFile The file used to persist and load the game's move history.
  */
 class GameViewModel(gHistFile: File) : ViewModel() {
-    companion object : SingleArgSingletonHolder<GameViewModel, File>(::GameViewModel)
+    companion object {
+        fun factory(histFile: File): ViewModelProvider.Factory {
+            return object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    return GameViewModel(histFile) as T
+                }
+            }
+        }
+    }
 
     /********************************* GAME MANAGEMENT ********************************************/
 

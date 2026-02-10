@@ -50,14 +50,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.darblee.ballsort.Global
 import com.darblee.ballsort.domain.model.GameViewModel
 import com.darblee.ballsort.gAudio_victory
-import com.darblee.ballsort.gGameViewModel
 import com.darblee.ballsort.ui.GameUIState
 import com.darblee.ballsort.ui.theme.colorList
 import com.darblee.ballsort.utilities.click
@@ -94,9 +93,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     val historyFile = File(LocalContext.current.filesDir, Global.GAME_HISTORY_FILENAME)
 
-    gGameViewModel = GameViewModel.getInstance(historyFile)
+    val gameViewModel: GameViewModel = viewModel(
+        factory = GameViewModel.factory(historyFile)
+    )
 
-    val gameUIState by gGameViewModel.gameUIState.collectAsStateWithLifecycle()
+    val gameUIState by gameViewModel.gameUIState.collectAsStateWithLifecycle()
 
     when (gameUIState.mode) {
 
@@ -106,7 +107,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         GameUIState.GameMode.Initialization -> {
             Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Initializing...")
             gridChange = true
-            undoButtonState = gGameViewModel.ableToUndo()
+            undoButtonState = gameViewModel.ableToUndo()
         }
 
         GameUIState.GameMode.NewGame -> {
@@ -127,7 +128,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
         GameUIState.GameMode.WonGame -> {
             Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Announce Victory")
             announceVictory = true
-            undoButtonState = gGameViewModel.ableToUndo()
+            undoButtonState = gameViewModel.ableToUndo()
         }
 
         GameUIState.GameMode.UpdatedGameBoard -> {
@@ -136,7 +137,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 "Recompose - ${gameUIState.mode} : Board has been modified. Typically start a new user move."
             )
             gridChange = true
-            undoButtonState = gGameViewModel.ableToUndo()
+            undoButtonState = gameViewModel.ableToUndo()
         }
 
         GameUIState.GameMode.RevertMoveEnableUndo -> {
@@ -160,14 +161,14 @@ fun GameScreen(modifier: Modifier = Modifier) {
         GameUIState.GameMode.WaitingToPushBall -> {
             Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Ready to push ball")
             popBall = true
-            undoButtonState = gGameViewModel.ableToUndo()
+            undoButtonState = gameViewModel.ableToUndo()
         }
 
         GameUIState.GameMode.PopBall -> {
             Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Process popping ball")
             gridChange = true
             popBall = true
-            undoButtonState = gGameViewModel.ableToUndo()
+            undoButtonState = gameViewModel.ableToUndo()
         }
     }
 
@@ -176,9 +177,9 @@ fun GameScreen(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        DrawButtons(undoButtonState)
+        DrawButtons(undoButtonState, gameViewModel)
 
-        DrawGameBoard(Modifier, gridChange, popBall, announceVictory)
+        DrawGameBoard(Modifier, gridChange, popBall, announceVictory, gameViewModel)
     }
 }
 
@@ -190,7 +191,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
  * based on whether there are moves available in the game history.
  */
 @Composable
-private fun DrawButtons(undoButtonRequestState: Boolean)
+private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameViewModel)
 {
     val view = LocalView.current
 
@@ -203,7 +204,7 @@ private fun DrawButtons(undoButtonRequestState: Boolean)
         Button(
             onClick = {
                 view.click()
-                gGameViewModel.newGame()
+                gameViewModel.newGame()
             }
         ) {
             Icon(
@@ -216,7 +217,7 @@ private fun DrawButtons(undoButtonRequestState: Boolean)
         Button(
             onClick = {
                 view.click()
-                gGameViewModel.resetGame()
+                gameViewModel.resetGame()
             }
         ) {
             Icon(
@@ -229,7 +230,7 @@ private fun DrawButtons(undoButtonRequestState: Boolean)
         Button(
             onClick = {
                 view.click()
-                gGameViewModel.userRevertToPreviousMove()
+                gameViewModel.userRevertToPreviousMove()
             },
             enabled = undoButtonRequestState
         ) {
@@ -265,7 +266,8 @@ private fun DrawGameBoard(
     modifier: Modifier = Modifier,
     updatedGameBoard: Boolean,
     popBall: Boolean,
-    announceVictory: Boolean, )
+    announceVictory: Boolean,
+    gameViewModel: GameViewModel, )
 {
     Log.i(Global.DEBUG_PREFIX, "Draw board called. updateGameBoard = $updatedGameBoard")
 
@@ -283,7 +285,7 @@ private fun DrawGameBoard(
     val textMeasurer = rememberTextMeasurer()
     val animatedVictoryMessage = remember { Animatable(initialValue = 0f) }
     if (announceVictory) {
-        AnimateVictoryMessageSetup(animatedVictoryMessage)
+        AnimateVictoryMessageSetup(animatedVictoryMessage, gameViewModel)
     } else {
         AnimateVictoryMessageReset(animatedVictoryMessage)
     }
@@ -312,22 +314,22 @@ private fun DrawGameBoard(
                                 xCol
                             }
 
-                            if (gGameViewModel.hasFloatingBall()) {
+                            if (gameViewModel.hasFloatingBall()) {
 
                                 // Check if we are pushing same ball back to its own column, essentially undoing the move.
-                                if (column == gGameViewModel.floatingBallColumn) {
+                                if (column == gameViewModel.floatingBallColumn) {
                                     view.click()
-                                    gGameViewModel.userSelectColumnToPush(column)
+                                    gameViewModel.userSelectColumnToPush(column)
                                 }
 
                                 // Only push if this is valid column to move to
-                                if (gGameViewModel.validColumnToMoveTo(column)) {
+                                if (gameViewModel.validColumnToMoveTo(column)) {
                                     view.click()
-                                    gGameViewModel.userSelectColumnToPush(column)
+                                    gameViewModel.userSelectColumnToPush(column)
                                 }
                             } else {
                                 view.click()
-                                gGameViewModel.selectColumnToPop(column)
+                                gameViewModel.selectColumnToPop(column)
                             }
                         }
                     )
@@ -360,11 +362,11 @@ private fun DrawGameBoard(
                     )
 
                     for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) {
-                        drawBall(this, curCol, curSlot)
+                        drawBall(this, curCol, curSlot, gameViewModel)
                     }
                 }
                 if (popBall) {
-                    animatePopBallPerform(this)
+                    animatePopBallPerform(this, gameViewModel)
                 }
 
                 if (announceVictory) {
@@ -391,7 +393,7 @@ private fun DrawGameBoard(
  * @param animateCtl The [Animatable] instance used to control the animation's float value.
  */
 @Composable
-private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVector1D>)
+private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVector1D>, gameViewModel: GameViewModel)
 {
     // Run this set-up only once
     LaunchedEffect(Unit) {
@@ -406,7 +408,7 @@ private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVe
                         easing = LinearOutSlowInEasing
                     )
                 )
-                gGameViewModel.setModeUpdateGameBoard()
+                gameViewModel.setModeUpdateGameBoard()
 
                 animateCtl.snapTo(0f)
                 animateCtl.stop()
@@ -487,7 +489,7 @@ private fun AnimateVictoryMessageReset(animateCtl: Animatable<Float, AnimationVe
  * @param col Specified column to draw ball on
  * @param slot Specified slot to draw ball on. If the slot is -1, then this is a floating ball
  */
-fun drawBall(drawScope: DrawScope, col: Int, slot: Int)
+fun drawBall(drawScope: DrawScope, col: Int, slot: Int, gameViewModel: GameViewModel)
 {
     var startX: Float
     var startY: Float
@@ -504,13 +506,13 @@ fun drawBall(drawScope: DrawScope, col: Int, slot: Int)
 
         if (slot != -1) {
             drawCircle(
-                color = gGameViewModel.getBallColor(col, slot),
+                color = gameViewModel.getBallColor(col, slot),
                 radius = gBallRadius,
                 center = Offset(startX, startY + yDistance(slot))
             )
         } else {
             drawCircle(
-                color = colorList[gGameViewModel.floatingBallColorInt],
+                color = colorList[gameViewModel.floatingBallColorInt],
                 radius = gBallRadius,
                 center = Offset(startX, startY )
             )
@@ -556,10 +558,10 @@ private fun animatePopBallSetup()
  *
  * @param drawScope The canvas scope on which to draw the floating ball.
  */
-private fun animatePopBallPerform(drawScope: DrawScope)
+private fun animatePopBallPerform(drawScope: DrawScope, gameViewModel: GameViewModel)
 {
-    drawBall(drawScope, gGameViewModel.floatingBallColumn, -1)
-    gGameViewModel.readyToPushBall()
+    drawBall(drawScope, gameViewModel.floatingBallColumn, -1, gameViewModel)
+    gameViewModel.readyToPushBall()
 }
 
 /**
