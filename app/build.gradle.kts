@@ -66,20 +66,10 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     // Lifecycle
-    implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.savedstate)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 
-    // Serialization. This is needed for navigation-compose as well.
+    // Serialization
     implementation(libs.kotlinx.serialization.json)
-
-    // Preference datastore
-    implementation (libs.androidx.datastore.preferences.rxjava2)
-    implementation (libs.androidx.datastore.preferences.rxjava3)
-
-    // Navigation
-    implementation(libs.androidx.navigation.compose)
-
-
 }
