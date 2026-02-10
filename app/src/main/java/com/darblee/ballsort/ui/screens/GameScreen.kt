@@ -64,8 +64,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.app.Activity
 import java.io.File
-import kotlin.system.exitProcess
 
 /**
  * The main entry point for the Ball Sort game screen.
@@ -85,11 +85,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     var undoButtonState by remember { mutableStateOf(true) }
 
-    var backPressed by remember { mutableStateOf(false) }
-    BackPressHandler(onBackPressed = {backPressed = true})
-    if (backPressed) {
-        exitProcess(1)
-    }
+    val activity = LocalContext.current as Activity
+    BackPressHandler(onBackPressed = { activity.finish() })
 
     val historyFile = File(LocalContext.current.filesDir, Global.GAME_HISTORY_FILENAME)
 
