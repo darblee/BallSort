@@ -174,8 +174,16 @@ class GameViewModel(gHistFile: File) : ViewModel() {
     init {
         viewModelScope.launch(Dispatchers.IO) {
             setHistoryFile(gHistFile)
-            loadHistoryFromFile()
-            setMode(GameUIState.GameMode.Initialization)
+
+            viewModelScope.launch(Dispatchers.IO) {
+
+                loadHistoryFromFile()
+                if (_moveHistory.isEmpty()) {
+                    newGame()
+                } else {
+                    setMode(GameUIState.GameMode.UpdatedGameBoard)
+                }
+            }
         }
     }
 
@@ -246,20 +254,43 @@ class GameViewModel(gHistFile: File) : ViewModel() {
     /**
      * Select column to push onto
      */
-    fun userSelectColumnToPush(col: Int)
-    {
+    fun userSelectColumnToPush(col: Int) {
         if (col.isFull()) return
+
+        val revertBackToSameColumn = (col == floatingBallColumn)
 
         pushColorInt(col, floatingBallColorInt)
 
-        viewModelScope.launch (Dispatchers.IO){
-            addCurrentSnapshotToHistory()
-
-            if (hasWon())
-                setMode(GameUIState.GameMode.WonGame)
+        // Check if user just want to undo the operation by putting
+        // the ball back to the same slot. If so, then this is NOT
+        // a new move. No need to add snapshot.
+        if (revertBackToSameColumn) {
+            if (ableToUndo())
+                setMode(GameUIState.GameMode.RevertMoveEnableUndo)
             else
-                setMode(GameUIState.GameMode.UpdatedGameBoard)
+                setMode(GameUIState.GameMode.RevertMoveDisableUndo)
+
+            return
         }
+
+        addCurrentSnapshotToHistory()
+
+        if (hasWon())
+            setMode(GameUIState.GameMode.WonGame)
+        else
+            setMode(GameUIState.GameMode.UpdatedGameBoard)
+
+    }
+
+    /**
+     * Determine if user is able to perform undo operation
+     */
+    fun ableToUndo(): Boolean
+    {
+        if (hasFloatingBall()) return true
+
+        val moveCount = _moveHistory.count()
+        return (moveCount > 1)
     }
 
     /**
@@ -280,7 +311,14 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         val prevGameSnapshot = _moveHistory[moveCount -2]
         updateGameFromSnapshot(prevGameSnapshot)
         _moveHistory.removeAt(moveCount - 1)
-        setMode(GameUIState.GameMode.UpdatedGameBoard)
+
+        viewModelScope.launch(Dispatchers.IO) {
+            saveGameHistoryToFile()
+            if (ableToUndo())
+                setMode(GameUIState.GameMode.RevertMoveEnableUndo)
+            else
+                setMode(GameUIState.GameMode.RevertMoveDisableUndo)
+        }
     }
 
     /**
@@ -296,10 +334,8 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         }
         packBoard()
 
-        viewModelScope.launch(Dispatchers.IO) {
-            addCurrentSnapshotToHistory()
-            setMode(GameUIState.GameMode.UpdatedGameBoard)
-        }
+        addCurrentSnapshotToHistory()
+        setMode(GameUIState.GameMode.NewGame)
     }
 
     /**
@@ -333,7 +369,11 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         updateGameFromSnapshot(firstSnapshot)
         _moveHistory.clear()
         _moveHistory.add(firstSnapshot)
-        setMode(GameUIState.GameMode.UpdatedGameBoard)
+
+        viewModelScope.launch(Dispatchers.IO) {
+            saveGameHistoryToFile()
+            setMode(GameUIState.GameMode.ResetGame)
+        }
     }
 
     /**
@@ -614,7 +654,6 @@ class GameViewModel(gHistFile: File) : ViewModel() {
             // (soft push only) If we are attempting to add ball on top of homogenous column, then reject it
             if ((soft) && (gameBoard[col][0] == gameBoard[col][1])) return false
 
-
             gameBoard[col][2] = ballColorInt
             resetFloatingBall()
             return (true)
@@ -800,7 +839,9 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         val curGameSnapshot = createGameSnapshot()
         _moveHistory.add(curGameSnapshot)
 
-        saveGameHistoryToFile()
+        viewModelScope.launch(Dispatchers.IO) {
+            saveGameHistoryToFile()
+        }
     }
 
 

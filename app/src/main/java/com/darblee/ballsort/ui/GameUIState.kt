@@ -15,11 +15,14 @@ data class GameUIState(
     /**
      * Various game modes for UI state
      *
-     * @property Initialization Initializing  Game View Model, such as loading game file content
-     * @property UpdatedGameBoard There is an updated (or new) game board. Now waiting for user to
+     * @property Initialization Initializing Game View Model, such as loading game file content
+     * @property NewGame New game with newly randomized ball positions. Update the game board
+     * @property UpdatedGameBoard There is an updated game board. Now waiting for user to
      * make a move
+     * @property ResetGame Reset back to the beginning of the existing game
+     * @property RevertMoveEnableUndo Undo the current move. Undo button need to remain enabled
+     * @property RevertMoveDisableUndo Undo the current move. Then disable the undo the button
      * @property PopBall Processing ball movement
-     * @property ShowHint Find a hint and now need to show the user with animation
      * @property WonGame One ball remaining. User has won the game
      * @property WaitingToPushBall There is no winning move. It will remain this way until there is a new
      * game or when user undo a move
@@ -27,7 +30,11 @@ data class GameUIState(
     sealed class GameMode {
 
         data object Initialization : GameMode()
+        data object NewGame: GameMode()
         data object UpdatedGameBoard : GameMode()
+        data object ResetGame: GameMode()
+        data object RevertMoveEnableUndo : GameMode()
+        data object RevertMoveDisableUndo : GameMode()
         data object PopBall : GameMode()
         data object WonGame : GameMode()
         data object WaitingToPushBall : GameMode()

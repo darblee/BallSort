@@ -17,7 +17,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -66,6 +74,8 @@ fun GameScreen(modifier: Modifier = Modifier) {
     var gridChange = false
     var popBall = false
 
+    var undoButtonState by remember { mutableStateOf(true) }
+
     var backPressed by remember { mutableStateOf(false) }
     BackPressHandler(onBackPressed = {backPressed = true})
     if (backPressed) {
@@ -84,69 +94,138 @@ fun GameScreen(modifier: Modifier = Modifier) {
         // WHen singleton object class GameViewModel get instantiated, it will load the game files
         // After the completion of file loading, it will set to "UpdatedGameBoard" mode.
         GameUIState.GameMode.Initialization -> {
-            Log.i("Game Recompose: ", "${gameUIState.mode} : Initializing...")
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Initializing...")
+            gridChange = true
+            undoButtonState = gGameViewModel.ableToUndo()
+        }
+
+        GameUIState.GameMode.NewGame -> {
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : New Game")
+            announceVictory = false
+            undoButtonState = false
+            gridChange = true
+        }
+
+        GameUIState.GameMode.ResetGame -> {
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Restart Game")
+            announceVictory = false
+            undoButtonState = false
             gridChange = true
 
         }
 
         GameUIState.GameMode.WonGame -> {
-            Log.i("Game Recompose: ", "${gameUIState.mode} : Announce Victory")
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Announce Victory")
             announceVictory = true
+            undoButtonState = gGameViewModel.ableToUndo()
         }
 
         GameUIState.GameMode.UpdatedGameBoard -> {
             Log.i(
-                "Game Recompose: ",
-                "${gameUIState.mode} : Board has been modified. Typically start a new user move."
+                Global.DEBUG_PREFIX,
+                "Recompose - ${gameUIState.mode} : Board has been modified. Typically start a new user move."
             )
             gridChange = true
+            undoButtonState = gGameViewModel.ableToUndo()
+        }
+
+        GameUIState.GameMode.RevertMoveEnableUndo -> {
+            Log.i(
+                Global.DEBUG_PREFIX,
+                "Recompose - ${gameUIState.mode} : Revert move. Board has been modified. May need to refresh undo button"
+            )
+            gridChange = true
+            undoButtonState = true
+        }
+
+        GameUIState.GameMode.RevertMoveDisableUndo -> {
+            Log.i(
+                Global.DEBUG_PREFIX,
+                "Recompose - ${gameUIState.mode} : Revert move. Board has been modified. May need to refresh undo button"
+            )
+            gridChange = true
+            undoButtonState = false
         }
 
         GameUIState.GameMode.WaitingToPushBall -> {
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Ready to push ball")
             popBall = true
-            Log.i(Global.DEBUG_PREFIX, "${gameUIState.mode} : Ready to push ball")
+            undoButtonState = gGameViewModel.ableToUndo()
         }
 
         GameUIState.GameMode.PopBall -> {
-            Log.i("Game Recompose: ", "${gameUIState.mode} : Process popping ball")
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Process popping ball")
             gridChange = true
             popBall = true
+            undoButtonState = gGameViewModel.ableToUndo()
         }
     }
-
-    val view = LocalView.current
 
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 30.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            Button(onClick = {
+        DrawButtons(undoButtonState)
+
+        DrawGameBoard(Modifier, gridChange, popBall, announceVictory)
+    }
+}
+
+/**
+ * Draw the buttons
+ */
+@Composable
+private fun DrawButtons(undoButtonRequestState: Boolean)
+{
+    val view = LocalView.current
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 30.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        Button(
+            onClick = {
                 view.click()
                 gGameViewModel.newGame()
-            }) {
-                Text("New Game")
             }
-            Button(onClick = {
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Star,
+                contentDescription = "New game",
+                modifier = Modifier.size(SwitchDefaults.IconSize)
+            )
+            Text("New Game", style = MaterialTheme.typography.titleSmall)
+        }
+        Button(
+            onClick = {
                 view.click()
                 gGameViewModel.resetGame()
-            }) {
-                Text("Restart")
             }
-            Button(onClick = {
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Refresh,
+                contentDescription = "Restart",
+                modifier = Modifier.size(SwitchDefaults.IconSize)
+            )
+            Text("Restart", style = MaterialTheme.typography.titleSmall)
+        }
+        Button(
+            onClick = {
                 view.click()
                 gGameViewModel.userRevertToPreviousMove()
-            }) {
-                Text("Undo")
-            }
+            },
+            enabled = undoButtonRequestState
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Undo",
+                modifier = Modifier.size(SwitchDefaults.IconSize)
+            )
+            Text("Undo", style = MaterialTheme.typography.titleSmall)
         }
-        DrawGameBoard(Modifier, gridChange, popBall, announceVictory)
     }
 }
 
@@ -158,17 +237,21 @@ private var gVerticalSpacing = 200f
  * Draw the game
  */
 @Composable
-fun DrawGameBoard(
+private fun DrawGameBoard(
     modifier: Modifier = Modifier,
     updatedGameBoard: Boolean,
     popBall: Boolean,
     announceVictory: Boolean, )
 {
+    Log.i(Global.DEBUG_PREFIX, "Draw board called. updateGameBoard = $updatedGameBoard")
+
     val columnLength = gBallRadius * 10
     val verticalMidpoint = (gVerticalSpacing * 2) + columnLength
-    val drawBoardToggle = remember { mutableStateOf(true) }
+    var drawBoardToggle by remember { mutableStateOf(true) }
 
-    if (popBall) animatePopBallSetup()
+    if (popBall) animatePopBallSetup(
+        // TODO: Set-up to do ball movement animation
+    )
 
     /**
      * textMeasurer is used to draw text on canvas.  This is used for animated victory message.
@@ -191,9 +274,19 @@ fun DrawGameBoard(
                     detectTapGestures(
                         onTap = { tapOffset ->
                             var xCol = ((tapOffset.x - (gWidthSpacing / 2)) / gWidthSpacing).toInt()
-                            if (xCol > (Global.MAX_COLUMNS - 1))  { xCol = (Global.MAX_COLUMNS - 1) }
+                            if (xCol > (Global.MAX_COLUMNS - 1)) {
+                                xCol = (Global.MAX_COLUMNS - 1)
+                            }
 
-                            val column = if (tapOffset.y > verticalMidpoint) { xCol + (Global.MAX_COLUMNS / 2) } else { xCol }
+                            val middleColNum = (Global.MAX_COLUMNS / 2) - 1
+
+                            val column = if (tapOffset.y > verticalMidpoint) {
+                                xCol + (Global.MAX_COLUMNS / 2)
+                            } else if ((tapOffset.y < verticalMidpoint) && (xCol >= middleColNum )) {
+                                middleColNum
+                            } else {
+                                xCol
+                            }
 
                             if (gGameViewModel.hasFloatingBall()) {
 
@@ -204,8 +297,7 @@ fun DrawGameBoard(
                                 }
 
                                 // Only push if this is valid column to move to
-                                if (gGameViewModel.validColumnToMoveTo(column))
-                                {
+                                if (gGameViewModel.validColumnToMoveTo(column)) {
                                     view.click()
                                     gGameViewModel.userSelectColumnToPush(column)
                                 }
@@ -233,7 +325,7 @@ fun DrawGameBoard(
 
                     if (updatedGameBoard) {
                         // Force recompose to redraw canvas-based game board
-                        drawBoardToggle.value = !drawBoardToggle.value
+                        drawBoardToggle = !drawBoardToggle
                     }
 
                     drawLine(
@@ -403,16 +495,17 @@ fun yDistance(slot: Int): Float
 
 /********************* Animation Routine ************************************/
 
+
 /**
- *
+ *  Setup to do the ball animation
  */
 private fun animatePopBallSetup()
 {
-
+// TODO: Setup the ball animation specification
 }
 
 /**
- *
+ * Move the pop to the desired solution
  */
 private fun animatePopBallPerform(drawScope: DrawScope)
 {
