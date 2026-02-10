@@ -183,7 +183,11 @@ fun GameScreen(modifier: Modifier = Modifier) {
 }
 
 /**
- * Draw the buttons
+ * Renders the control buttons for the game, including options to start a new game,
+ * restart the current level, and undo the last move.
+ *
+ * @param undoButtonRequestState Determines whether the "Undo" button is currently enabled,
+ * based on whether there are moves available in the game history.
  */
 @Composable
 private fun DrawButtons(undoButtonRequestState: Boolean)
@@ -244,7 +248,17 @@ private var gWidthSpacing = 0F
 private var gVerticalSpacing = 200f
 
 /**
- * Draw the game
+ * Renders the interactive game board using a Canvas and handles user touch input.
+ *
+ * This composable draws the test tubes (columns) and the balls based on the current game state.
+ * It detects tap gestures to determine which column a user is interacting with, allowing
+ * balls to be "popped" from or "pushed" into tubes. It also coordinates ball movement
+ * animations and the victory message overlay.
+ *
+ * @param modifier The modifier to be applied to the layout.
+ * @param updatedGameBoard A flag indicating if the board state has changed and requires a redraw.
+ * @param popBall A flag indicating if a ball is currently being moved or "popped."
+ * @param announceVictory A flag indicating if the victory animation should be displayed.
  */
 @Composable
 private fun DrawGameBoard(
@@ -365,9 +379,16 @@ private fun DrawGameBoard(
 }
 
 /**
- * Setup victory message animation. Define animation specification
+ * Sets up and triggers the victory message animation and accompanying sound effects.
  *
- * @param animateCtl Animate object that control animation state of the victory message
+ * This composable uses a [LaunchedEffect] to run a sequence of events when the user wins:
+ * 1. Resets the animation state.
+ * 2. Animates the victory message scale/progress from 0 to 1 over 1500ms.
+ * 3. Plays the victory audio clip in parallel with the animation.
+ * 4. Updates the game mode to [GameUIState.GameMode.UpdatedGameBoard] once complete.
+ * 5. Provides a brief delay before resetting the animation controller.
+ *
+ * @param animateCtl The [Animatable] instance used to control the animation's float value.
  */
 @Composable
 private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVector1D>)
@@ -442,9 +463,13 @@ private fun animateVictoryMsgInvoke(
 }
 
 /**
- * Stop and reset the victory animation control
+ * Resets the victory message animation state.
  *
- * @param animateCtl Animate object that control animation state of the victory message
+ * This function ensures that the animation is stopped and the progress is snapped back
+ * to the initial value (0f), effectively hiding the victory message and preparing
+ * the controller for its next use.
+ *
+ * @param animateCtl The [Animatable] object used to control the animation state of the victory message.
  */
 @Composable
 private fun AnimateVictoryMessageReset(animateCtl: Animatable<Float, AnimationVector1D>)
@@ -494,7 +519,13 @@ fun drawBall(drawScope: DrawScope, col: Int, slot: Int)
 }
 
 /**
- * Distance from base of column
+ * Calculates the vertical offset for a ball within a column based on its slot index.
+ *
+ * This distance is measured from the top of the column to the center of the ball,
+ * ensuring that balls are stacked from the bottom up.
+ *
+ * @param slot The index of the slot in the column (0 being the bottom-most slot).
+ * @return The vertical Y-axis distance from the column's starting Y-coordinate.
  */
 fun yDistance(slot: Int): Float
 {
@@ -515,7 +546,15 @@ private fun animatePopBallSetup()
 }
 
 /**
- * Move the pop to the desired solution
+ * Renders the floating ball at the top of its origin column.
+ *
+ * This function is called within the animation loop when a ball has been "popped"
+ * from a column. It draws the ball in its floating position, visually indicating
+ * to the user that it is selected and ready to be moved to a destination column.
+ * After drawing, it updates the game state to `WaitingToPushBall`, signifying
+ * that the system is now waiting for the user to select a target column.
+ *
+ * @param drawScope The canvas scope on which to draw the floating ball.
  */
 private fun animatePopBallPerform(drawScope: DrawScope)
 {

@@ -26,7 +26,13 @@ import kotlin.random.Random
 typealias gameSnapshot = MutableList<Int>
 
 /**
- * **View Model for the  Game**
+ * ViewModel responsible for managing the state and logic of the Ball Sort game.
+ *
+ * This class handles the game board state, move history, persistence to local storage,
+ * and randomization for new games. it exposes a [gameUIState] flow that the UI
+ * observes to reflect changes in the game's mode (e.g., popping a ball, winning, or resetting).
+ *
+ * @param gHistFile The file used to persist and load the game's move history.
  */
 class GameViewModel(gHistFile: File) : ViewModel() {
     companion object : SingleArgSingletonHolder<GameViewModel, File>(::GameViewModel)
@@ -131,7 +137,14 @@ class GameViewModel(gHistFile: File) : ViewModel() {
     }
 
     /**
-     * Determine if the column has 3 or more balls with the same color
+     * Determines if a column is "deeply homogenous".
+     *
+     * A column is considered deeply homogenous if it contains at least three balls of the same color,
+     * regardless of their position within the column. This is used to identify columns that are
+     * close to being solved, which can be a factor in the game's randomization logic.
+     *
+     * @param col The column index to check.
+     * @return `true` if the column contains three or more balls of the same color, `false` otherwise.
      */
     private fun isDeepHomogenous(col: Int): Boolean
     {
