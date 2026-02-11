@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /B \"C:\\\\Users\\\\darbl\\\\AndroidStudioProjects\\\\BallSort\")",
+      "Bash(.\\\\gradlew.bat compileDebugKotlin:*)",
+      "Bash(cmd /c \"gradlew.bat compileDebugKotlin\")",
+      "Bash(cmd /c:*)",
+      "Bash(cmd.exe /c \"gradlew.bat compileDebugKotlin 2>&1\")",
+      "Bash(cmd.exe /c \"gradlew.bat compileDebugKotlin\")",
+      "Bash(cmd.exe /c \"gradlew.bat compileDebugKotlin --no-daemon --console=plain\")",
+      "Bash(C:UsersdarblAndroidStudioProjectsBallSortgradlew.bat compileDebugKotlin --console=plain)",
+      "Bash(powershell.exe -Command \"& ''C:\\\\Users\\\\darbl\\\\AndroidStudioProjects\\\\BallSort\\\\gradlew.bat'' compileDebugKotlin --console=plain 2>&1\")",
+      "Bash(powershell.exe -Command \"git diff --stat HEAD -- ''app/src/main/java/com/darblee/ballsort/ui/screens/GameScreen.kt''\")",
+      "Bash(.gradlew.bat --stop)",
+      "Bash(./gradlew.bat:*)"
+    ]
+  }
+}
