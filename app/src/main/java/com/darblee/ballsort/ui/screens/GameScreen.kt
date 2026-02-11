@@ -98,75 +98,30 @@ fun GameScreen(modifier: Modifier = Modifier) {
     val gameUIState by gameViewModel.gameUIState.collectAsStateWithLifecycle()
 
     when (gameUIState.mode) {
-
-        // Because "initial data loading" mode is only set at initialization, this is only called once.
-        // WHen singleton object class GameViewModel get instantiated, it will load the game files
-        // After the completion of file loading, it will set to "UpdatedGameBoard" mode.
-        GameUIState.GameMode.Initialization -> {
-            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Initializing...")
-            gridChange = true
-            undoButtonState = gameViewModel.ableToUndo()
-        }
-
-        GameUIState.GameMode.NewGame -> {
-            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : New Game")
+        GameUIState.GameMode.NewGame, GameUIState.GameMode.ResetGame -> {
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode}")
             announceVictory = false
             undoButtonState = false
             gridChange = true
         }
-
-        GameUIState.GameMode.ResetGame -> {
-            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Restart Game")
-            announceVictory = false
-            undoButtonState = false
-            gridChange = true
-
-        }
-
-        GameUIState.GameMode.WonGame -> {
-            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Announce Victory")
-            announceVictory = true
-            undoButtonState = gameViewModel.ableToUndo()
-        }
-
-        GameUIState.GameMode.UpdatedGameBoard -> {
-            Log.i(
-                Global.DEBUG_PREFIX,
-                "Recompose - ${gameUIState.mode} : Board has been modified. Typically start a new user move."
-            )
-            gridChange = true
-            undoButtonState = gameViewModel.ableToUndo()
-        }
-
-        GameUIState.GameMode.RevertMoveEnableUndo -> {
-            Log.i(
-                Global.DEBUG_PREFIX,
-                "Recompose - ${gameUIState.mode} : Revert move. Board has been modified. May need to refresh undo button"
-            )
-            gridChange = true
-            undoButtonState = true
-        }
-
-        GameUIState.GameMode.RevertMoveDisableUndo -> {
-            Log.i(
-                Global.DEBUG_PREFIX,
-                "Recompose - ${gameUIState.mode} : Revert move. Board has been modified. May need to refresh undo button"
-            )
-            gridChange = true
-            undoButtonState = false
-        }
-
         GameUIState.GameMode.WaitingToPushBall -> {
             Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Ready to push ball")
             popBall = true
             undoButtonState = gameViewModel.ableToUndo()
         }
-
         GameUIState.GameMode.PopBall -> {
             Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Process popping ball")
             gridChange = true
             popBall = true
             undoButtonState = gameViewModel.ableToUndo()
+        }
+        else -> { // Covers all other cases
+            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode}")
+            gridChange = true
+            undoButtonState = gameViewModel.ableToUndo()
+            if (gameUIState.mode == GameUIState.GameMode.WonGame) {
+                announceVictory = true
+            }
         }
     }
 
