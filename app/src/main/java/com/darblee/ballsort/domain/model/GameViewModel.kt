@@ -233,7 +233,19 @@ class GameViewModel(gHistFile: File) : ViewModel() {
 
     private fun setMode(mode: GameUIState.GameMode) {
         _uiGameState.update { curState ->
-            curState.copy(_mode = mode, _stateId = ++_stateCounter)
+            curState.copy(
+                _mode = mode,
+                _stateId = ++_stateCounter,
+                gridChange = mode != GameUIState.GameMode.WaitingToPushBall,
+                popBall = mode == GameUIState.GameMode.WaitingToPushBall
+                        || mode == GameUIState.GameMode.PopBall,
+                announceVictory = mode == GameUIState.GameMode.WonGame,
+                undoEnabled = when (mode) {
+                    GameUIState.GameMode.NewGame,
+                    GameUIState.GameMode.ResetGame -> false
+                    else -> ableToUndo()
+                },
+            )
         }
     }
 

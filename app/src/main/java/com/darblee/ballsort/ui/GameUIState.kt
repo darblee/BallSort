@@ -9,6 +9,10 @@ package com.darblee.ballsort.ui
 data class GameUIState(
     private var _mode: GameMode = GameMode.Initialization,
     private var _stateId: Long = 0L,
+    val gridChange: Boolean = false,
+    val popBall: Boolean = false,
+    val announceVictory: Boolean = false,
+    val undoEnabled: Boolean = false,
 ) {
     var mode = _mode
         private set

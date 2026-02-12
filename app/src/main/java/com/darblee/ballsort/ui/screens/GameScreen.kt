@@ -33,10 +33,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -80,12 +78,6 @@ import java.io.File
  */
 @Composable
 fun GameScreen(modifier: Modifier = Modifier) {
-    var announceVictory = false
-    var gridChange = false
-    var popBall = false
-
-    var undoButtonState by remember { mutableStateOf(true) }
-
     val activity = LocalContext.current as Activity
     BackPressHandler(onBackPressed = { activity?.finish() })
 
@@ -97,42 +89,17 @@ fun GameScreen(modifier: Modifier = Modifier) {
 
     val gameUIState by gameViewModel.gameUIState.collectAsStateWithLifecycle()
 
-    when (gameUIState.mode) {
-        GameUIState.GameMode.NewGame, GameUIState.GameMode.ResetGame -> {
-            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode}")
-            announceVictory = false
-            undoButtonState = false
-            gridChange = true
-        }
-        GameUIState.GameMode.WaitingToPushBall -> {
-            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Ready to push ball")
-            popBall = true
-            undoButtonState = gameViewModel.ableToUndo()
-        }
-        GameUIState.GameMode.PopBall -> {
-            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode} : Process popping ball")
-            gridChange = true
-            popBall = true
-            undoButtonState = gameViewModel.ableToUndo()
-        }
-        else -> { // Covers all other cases
-            Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode}")
-            gridChange = true
-            undoButtonState = gameViewModel.ableToUndo()
-            if (gameUIState.mode == GameUIState.GameMode.WonGame) {
-                announceVictory = true
-            }
-        }
-    }
+    Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode}")
 
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        DrawButtons(undoButtonState, gameViewModel)
+        DrawButtons(gameUIState.undoEnabled, gameViewModel)
 
-        DrawGameBoard(Modifier, gridChange, popBall, announceVictory, gameViewModel, gameUIState)
+        DrawGameBoard(Modifier, gameUIState.gridChange, gameUIState.popBall,
+            gameUIState.announceVictory, gameViewModel, gameUIState)
     }
 }
 
