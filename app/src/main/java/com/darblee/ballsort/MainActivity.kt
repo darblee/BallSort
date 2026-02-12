@@ -30,13 +30,15 @@ class MainActivity : ComponentActivity() {
             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
             .build()
 
+        val historyFile = java.io.File(filesDir, Global.GAME_HISTORY_FILENAME)
+
         setContent {
             gAudio_victory = MediaPlayer.create(LocalContext.current, R.raw.victory)
             gAudio_victory.setAudioAttributes(playbackAttributes)
 
             ForcePortraitMode()
             BallSortTheme {
-                MainViewImplementation()
+                MainViewImplementation(historyFile)
             }
         }
     }
@@ -61,9 +63,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun MainViewImplementation()
+private fun MainViewImplementation(historyFile: java.io.File)
 {
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-        GameScreen(modifier = Modifier.padding(innerPadding))
+        GameScreen(historyFile = historyFile, modifier = Modifier.padding(innerPadding))
     }
 }

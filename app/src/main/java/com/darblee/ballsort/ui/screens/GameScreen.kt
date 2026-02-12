@@ -41,7 +41,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
@@ -77,11 +76,9 @@ import java.io.File
  * @param modifier The modifier to be applied to the root Column layout.
  */
 @Composable
-fun GameScreen(modifier: Modifier = Modifier) {
+fun GameScreen(historyFile: File, modifier: Modifier = Modifier) {
     val activity = LocalOnBackPressedDispatcherOwner.current as? Activity
     BackPressHandler(onBackPressed = { activity?.finish() })
-
-    val historyFile = File(LocalContext.current.filesDir, Global.GAME_HISTORY_FILENAME)
 
     val gameViewModel: GameViewModel = viewModel(
         factory = GameViewModel.factory(historyFile)
