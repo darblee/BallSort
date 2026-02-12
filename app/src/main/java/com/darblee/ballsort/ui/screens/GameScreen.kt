@@ -132,7 +132,7 @@ fun GameScreen(modifier: Modifier = Modifier) {
     ) {
         DrawButtons(undoButtonState, gameViewModel)
 
-        DrawGameBoard(Modifier, gridChange, popBall, announceVictory, gameViewModel)
+        DrawGameBoard(Modifier, gridChange, popBall, announceVictory, gameViewModel, gameUIState)
     }
 }
 
@@ -221,13 +221,15 @@ private fun DrawGameBoard(
     updatedGameBoard: Boolean,
     popBall: Boolean,
     announceVictory: Boolean,
-    gameViewModel: GameViewModel, )
+    gameViewModel: GameViewModel,
+    gameUIState: GameUIState, )
 {
     Log.i(Global.DEBUG_PREFIX, "Draw board called. updateGameBoard = $updatedGameBoard")
 
-    if (popBall) animatePopBallSetup(
-        // TODO: Set-up to do ball movement animation
-    )
+    // Track gameUIState as a Compose State so the Canvas draw phase redraws
+    // when the board changes. Without this, Compose skips the Canvas redraw
+    // because gameViewModel (same object reference) doesn't signal changes.
+    val currentGameUIState = rememberUpdatedState(gameUIState)
 
     /**
      * textMeasurer is used to draw text on canvas.  This is used for animated victory message.
@@ -291,6 +293,10 @@ private fun DrawGameBoard(
                     )
                 }  // .pointerInput
         ) {
+            // Read Compose State to register a draw-phase dependency.
+            // This ensures the Canvas redraws when game state changes.
+            currentGameUIState.value
+
             val drawScope = this
             var startX: Float
             var startY: Float
@@ -470,7 +476,7 @@ fun drawBall(drawScope: DrawScope, col: Int, slot: Int, gameViewModel: GameViewM
             drawCircle(
                 color = colorList[gameViewModel.floatingBallColorInt],
                 radius = gBallRadius,
-                center = Offset(startX, startY )
+                center = Offset(startX, startY + gBallRadius * 0.5f)
             )
         }
     }

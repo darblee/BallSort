@@ -182,12 +182,13 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         board.restoreFromSnapshot(prevGameSnapshot)
         _moveHistory.removeAt(moveCount - 1)
 
+        if (ableToUndo())
+            setMode(GameUIState.GameMode.RevertMoveEnableUndo)
+        else
+            setMode(GameUIState.GameMode.RevertMoveDisableUndo)
+
         viewModelScope.launch(Dispatchers.IO) {
             saveGameHistoryToFile()
-            if (ableToUndo())
-                setMode(GameUIState.GameMode.RevertMoveEnableUndo)
-            else
-                setMode(GameUIState.GameMode.RevertMoveDisableUndo)
         }
     }
 
@@ -228,9 +229,11 @@ class GameViewModel(gHistFile: File) : ViewModel() {
      *
      * For more details, see [gameUIState]
      */
+    private var _stateCounter = 0L
+
     private fun setMode(mode: GameUIState.GameMode) {
         _uiGameState.update { curState ->
-            curState.copy(_mode = mode)
+            curState.copy(_mode = mode, _stateId = ++_stateCounter)
         }
     }
 
