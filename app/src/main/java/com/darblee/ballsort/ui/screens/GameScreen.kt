@@ -164,10 +164,10 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
     }
 }
 
-private var gBallRadius = 65f
-private var gWidthSpacing = 0F
-private var gVerticalSpacing = 200f
-private var gVerticalMidpoint = 0f
+private var BALL_RADIUS = 65f
+private var WIDTH_SPACING = 0F
+private var VERTICAL_SPACING = 200f
+private var VERTICAL_MIDPOINT = 0f
 
 /**
  * Renders the interactive game board using a Canvas and handles user touch input.
@@ -224,16 +224,16 @@ private fun DrawGameBoard(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = { tapOffset ->
-                            var xCol = ((tapOffset.x - (gWidthSpacing / 2)) / gWidthSpacing).toInt()
+                            var xCol = ((tapOffset.x - (WIDTH_SPACING / 2)) / WIDTH_SPACING).toInt()
                             if (xCol > (Global.MAX_COLUMNS - 1)) {
                                 xCol = (Global.MAX_COLUMNS - 1)
                             }
 
                             val middleColNum = (Global.MAX_COLUMNS / 2) - 1
 
-                            val column = if (tapOffset.y > gVerticalMidpoint) {
+                            val column = if (tapOffset.y > VERTICAL_MIDPOINT) {
                                 xCol + (Global.MAX_COLUMNS / 2)
-                            } else if ((tapOffset.y < gVerticalMidpoint) && (xCol >= middleColNum )) {
+                            } else if ((tapOffset.y < VERTICAL_MIDPOINT) && (xCol >= middleColNum )) {
                                 middleColNum
                             } else {
                                 xCol
@@ -269,23 +269,23 @@ private fun DrawGameBoard(
             var startY: Float
 
             with (drawScope) {
-                gWidthSpacing = size.width / ((Global.MAX_COLUMNS / 2) + 1)
-                gBallRadius = minOf(size.height / 23f, gWidthSpacing * 0.45f)
-                gVerticalSpacing = (size.height - 20f * gBallRadius) / 3f
-                val columnLength = gBallRadius * 10
-                gVerticalMidpoint = (gVerticalSpacing * 2) + columnLength
+                WIDTH_SPACING = size.width / ((Global.MAX_COLUMNS / 2) + 1)
+                BALL_RADIUS = minOf(size.height / 23f, WIDTH_SPACING * 0.45f)
+                VERTICAL_SPACING = (size.height - 20f * BALL_RADIUS) / 3f
+                val columnLength = BALL_RADIUS * 10
+                VERTICAL_MIDPOINT = (VERTICAL_SPACING * 2) + columnLength
 
                 for (curCol in 0..< Global.MAX_COLUMNS) {
                     startY = if (curCol < (Global.MAX_COLUMNS / 2)) {
-                        gVerticalSpacing
+                        VERTICAL_SPACING
                     } else {
-                        gVerticalMidpoint
+                        VERTICAL_MIDPOINT
                     }
-                    startX = ((curCol % (Global.MAX_COLUMNS / 2)) + 1) * gWidthSpacing
+                    startX = ((curCol % (Global.MAX_COLUMNS / 2)) + 1) * WIDTH_SPACING
 
                     drawLine(
                         color = Color.White,
-                        start = Offset(startX, startY + (1.5F * gBallRadius)),
+                        start = Offset(startX, startY + (1.5F * BALL_RADIUS)),
                         end = Offset(startX, (startY + columnLength)),
                         strokeWidth = 10f
                     )
@@ -423,27 +423,27 @@ fun drawBall(drawScope: DrawScope, col: Int, slot: Int, gameViewModel: GameViewM
     var startX: Float
     var startY: Float
 
-    val columnLength = gBallRadius * 10
+    val columnLength = BALL_RADIUS * 10
 
     with (drawScope) {
         startY = if (col < (Global.MAX_COLUMNS / 2)) {
-            gVerticalSpacing
+            VERTICAL_SPACING
         } else {
-            (gVerticalSpacing * 2) + columnLength
+            (VERTICAL_SPACING * 2) + columnLength
         }
-        startX = ((col % (Global.MAX_COLUMNS / 2)) + 1) * gWidthSpacing
+        startX = ((col % (Global.MAX_COLUMNS / 2)) + 1) * WIDTH_SPACING
 
         if (slot != -1) {
             drawCircle(
                 color = gameViewModel.getBallColor(col, slot),
-                radius = gBallRadius,
+                radius = BALL_RADIUS,
                 center = Offset(startX, startY + yDistance(slot))
             )
         } else {
             drawCircle(
                 color = colorList[gameViewModel.floatingBallColorInt],
-                radius = gBallRadius,
-                center = Offset(startX, startY + gBallRadius * 0.5f)
+                radius = BALL_RADIUS,
+                center = Offset(startX, startY + BALL_RADIUS * 0.5f)
             )
         }
     }
@@ -460,8 +460,8 @@ fun drawBall(drawScope: DrawScope, col: Int, slot: Int, gameViewModel: GameViewM
  */
 fun yDistance(slot: Int): Float
 {
-    val columnLength = gBallRadius * 10
-    return (columnLength - gBallRadius - (slot * (2 * gBallRadius)))
+    val columnLength = BALL_RADIUS * 10
+    return (columnLength - BALL_RADIUS - (slot * (2 * BALL_RADIUS)))
 }
 
 /********************* Animation Routine ************************************/
