@@ -78,7 +78,7 @@ import java.io.File
  */
 @Composable
 fun GameScreen(modifier: Modifier = Modifier) {
-    val activity = LocalContext.current as Activity
+    val activity = LocalOnBackPressedDispatcherOwner.current as? Activity
     BackPressHandler(onBackPressed = { activity?.finish() })
 
     val historyFile = File(LocalContext.current.filesDir, Global.GAME_HISTORY_FILENAME)
