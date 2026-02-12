@@ -197,9 +197,10 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
     }
 }
 
-private const val gBallRadius = 65f
+private var gBallRadius = 65f
 private var gWidthSpacing = 0F
 private var gVerticalSpacing = 200f
+private var gVerticalMidpoint = 0f
 
 /**
  * Renders the interactive game board using a Canvas and handles user touch input.
@@ -223,9 +224,6 @@ private fun DrawGameBoard(
     gameViewModel: GameViewModel, )
 {
     Log.i(Global.DEBUG_PREFIX, "Draw board called. updateGameBoard = $updatedGameBoard")
-
-    val columnLength = gBallRadius * 10
-    val verticalMidpoint = (gVerticalSpacing * 2) + columnLength
 
     if (popBall) animatePopBallSetup(
         // TODO: Set-up to do ball movement animation
@@ -264,9 +262,9 @@ private fun DrawGameBoard(
 
                             val middleColNum = (Global.MAX_COLUMNS / 2) - 1
 
-                            val column = if (tapOffset.y > verticalMidpoint) {
+                            val column = if (tapOffset.y > gVerticalMidpoint) {
                                 xCol + (Global.MAX_COLUMNS / 2)
-                            } else if ((tapOffset.y < verticalMidpoint) && (xCol >= middleColNum )) {
+                            } else if ((tapOffset.y < gVerticalMidpoint) && (xCol >= middleColNum )) {
                                 middleColNum
                             } else {
                                 xCol
@@ -299,11 +297,16 @@ private fun DrawGameBoard(
 
             with (drawScope) {
                 gWidthSpacing = size.width / ((Global.MAX_COLUMNS / 2) + 1)
+                gBallRadius = minOf(size.height / 23f, gWidthSpacing * 0.45f)
+                gVerticalSpacing = (size.height - 20f * gBallRadius) / 3f
+                val columnLength = gBallRadius * 10
+                gVerticalMidpoint = (gVerticalSpacing * 2) + columnLength
+
                 for (curCol in 0..< Global.MAX_COLUMNS) {
                     startY = if (curCol < (Global.MAX_COLUMNS / 2)) {
                         gVerticalSpacing
                     } else {
-                        verticalMidpoint
+                        gVerticalMidpoint
                     }
                     startX = ((curCol % (Global.MAX_COLUMNS / 2)) + 1) * gWidthSpacing
 
@@ -484,9 +487,8 @@ fun drawBall(drawScope: DrawScope, col: Int, slot: Int, gameViewModel: GameViewM
  */
 fun yDistance(slot: Int): Float
 {
-    val ballRadius = 65f
-    val columnLength = ballRadius * 10
-    return (columnLength - ballRadius - (slot * (2 * ballRadius)))
+    val columnLength = gBallRadius * 10
+    return (columnLength - gBallRadius - (slot * (2 * gBallRadius)))
 }
 
 /********************* Animation Routine ************************************/
