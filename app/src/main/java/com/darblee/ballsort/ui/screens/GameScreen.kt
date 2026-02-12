@@ -31,7 +31,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -207,7 +206,7 @@ private fun DrawGameBoard(
     }
 
     if (popBall && updatedGameBoard) {
-        SideEffect {
+        LaunchedEffect(gameUIState) {
             gameViewModel.readyToPushBall()
         }
     }
