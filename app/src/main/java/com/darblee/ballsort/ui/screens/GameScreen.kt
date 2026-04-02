@@ -164,10 +164,6 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
     }
 }
 
-private var BALL_RADIUS = 65f
-private var WIDTH_SPACING = 0F
-private var VERTICAL_SPACING = 200f
-private var VERTICAL_MIDPOINT = 0f
 
 /**
  * Renders the interactive game board using a Canvas and handles user touch input.
@@ -230,10 +226,10 @@ private fun DrawGameBoard(
             val cl = br * 10f
             floatArrayOf(ws, br, vs, (vs * 2) + cl)
         }
-        WIDTH_SPACING = layoutValues[0]
-        BALL_RADIUS = layoutValues[1]
-        VERTICAL_SPACING = layoutValues[2]
-        VERTICAL_MIDPOINT = layoutValues[3]
+        val widthSpacing = layoutValues[0]
+        val ballRadius = layoutValues[1]
+        val verticalSpacing = layoutValues[2]
+        val verticalMidpoint = layoutValues[3]
 
         Canvas(
             modifier = modifier
@@ -242,16 +238,16 @@ private fun DrawGameBoard(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = { tapOffset ->
-                            var xCol = ((tapOffset.x - (WIDTH_SPACING / 2)) / WIDTH_SPACING).toInt()
+                            var xCol = ((tapOffset.x - (widthSpacing / 2)) / widthSpacing).toInt()
                             if (xCol > (Global.MAX_COLUMNS - 1)) {
                                 xCol = (Global.MAX_COLUMNS - 1)
                             }
 
                             val middleColNum = (Global.MAX_COLUMNS / 2) - 1
 
-                            val column = if (tapOffset.y > VERTICAL_MIDPOINT) {
+                            val column = if (tapOffset.y > verticalMidpoint) {
                                 xCol + (Global.MAX_COLUMNS / 2)
-                            } else if ((tapOffset.y < VERTICAL_MIDPOINT) && (xCol >= middleColNum )) {
+                            } else if ((tapOffset.y < verticalMidpoint) && (xCol >= middleColNum )) {
                                 middleColNum
                             } else {
                                 xCol
@@ -289,29 +285,29 @@ private fun DrawGameBoard(
             var startY: Float
 
             with (drawScope) {
-                val columnLength = BALL_RADIUS * 10
+                val columnLength = ballRadius * 10
 
                 for (curCol in 0..< Global.MAX_COLUMNS) {
                     startY = if (curCol < (Global.MAX_COLUMNS / 2)) {
-                        VERTICAL_SPACING
+                        verticalSpacing
                     } else {
-                        VERTICAL_MIDPOINT
+                        verticalMidpoint
                     }
-                    startX = ((curCol % (Global.MAX_COLUMNS / 2)) + 1) * WIDTH_SPACING
+                    startX = ((curCol % (Global.MAX_COLUMNS / 2)) + 1) * widthSpacing
 
                     drawLine(
                         color = Color.White,
-                        start = Offset(startX, startY + (1.5F * BALL_RADIUS)),
+                        start = Offset(startX, startY + (1.5F * ballRadius)),
                         end = Offset(startX, (startY + columnLength)),
                         strokeWidth = 10f
                     )
 
                     for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) {
-                        drawBall(this, curCol, curSlot, gameViewModel)
+                        drawBall(this, curCol, curSlot, gameViewModel, ballRadius, widthSpacing, verticalSpacing)
                     }
                 }
                 if (popBall) {
-                    animatePopBallPerform(this, gameViewModel)
+                    animatePopBallPerform(this, gameViewModel, ballRadius, widthSpacing, verticalSpacing)
                 }
 
                 if (announceVictory) {
@@ -434,32 +430,39 @@ private fun AnimateVictoryMessageReset(animateCtl: Animatable<Float, AnimationVe
  * @param col Specified column to draw ball on
  * @param slot Specified slot to draw ball on. If the slot is -1, then this is a floating ball
  */
-fun drawBall(drawScope: DrawScope, col: Int, slot: Int, gameViewModel: GameViewModel)
-{
+fun drawBall(
+    drawScope: DrawScope,
+    col: Int,
+    slot: Int,
+    gameViewModel: GameViewModel,
+    ballRadius: Float,
+    widthSpacing: Float,
+    verticalSpacing: Float
+) {
     var startX: Float
     var startY: Float
 
-    val columnLength = BALL_RADIUS * 10
+    val columnLength = ballRadius * 10
 
     with (drawScope) {
         startY = if (col < (Global.MAX_COLUMNS / 2)) {
-            VERTICAL_SPACING
+            verticalSpacing
         } else {
-            (VERTICAL_SPACING * 2) + columnLength
+            (verticalSpacing * 2) + columnLength
         }
-        startX = ((col % (Global.MAX_COLUMNS / 2)) + 1) * WIDTH_SPACING
+        startX = ((col % (Global.MAX_COLUMNS / 2)) + 1) * widthSpacing
 
         if (slot != -1) {
             drawCircle(
                 color = gameViewModel.getBallColor(col, slot),
-                radius = BALL_RADIUS,
-                center = Offset(startX, startY + yDistance(slot))
+                radius = ballRadius,
+                center = Offset(startX, startY + yDistance(slot, ballRadius))
             )
         } else {
             drawCircle(
                 color = colorList[gameViewModel.floatingBallColorInt],
-                radius = BALL_RADIUS,
-                center = Offset(startX, startY + BALL_RADIUS * 0.5f)
+                radius = ballRadius,
+                center = Offset(startX, startY + ballRadius * 0.5f)
             )
         }
     }
@@ -474,10 +477,10 @@ fun drawBall(drawScope: DrawScope, col: Int, slot: Int, gameViewModel: GameViewM
  * @param slot The index of the slot in the column (0 being the bottom-most slot).
  * @return The vertical Y-axis distance from the column's starting Y-coordinate.
  */
-fun yDistance(slot: Int): Float
+fun yDistance(slot: Int, ballRadius: Float): Float
 {
-    val columnLength = BALL_RADIUS * 10
-    return (columnLength - BALL_RADIUS - (slot * (2 * BALL_RADIUS)))
+    val columnLength = ballRadius * 10
+    return (columnLength - ballRadius - (slot * (2 * ballRadius)))
 }
 
 /********************* Animation Routine ************************************/
@@ -502,9 +505,14 @@ private fun animatePopBallSetup()
  *
  * @param drawScope The canvas scope on which to draw the floating ball.
  */
-private fun animatePopBallPerform(drawScope: DrawScope, gameViewModel: GameViewModel)
-{
-    drawBall(drawScope, gameViewModel.floatingBallColumn, -1, gameViewModel)
+private fun animatePopBallPerform(
+    drawScope: DrawScope,
+    gameViewModel: GameViewModel,
+    ballRadius: Float,
+    widthSpacing: Float,
+    verticalSpacing: Float
+) {
+    drawBall(drawScope, gameViewModel.floatingBallColumn, -1, gameViewModel, ballRadius, widthSpacing, verticalSpacing)
 }
 
 /**
