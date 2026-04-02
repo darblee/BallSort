@@ -238,20 +238,7 @@ private fun DrawGameBoard(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = { tapOffset ->
-                            var xCol = ((tapOffset.x - (widthSpacing / 2)) / widthSpacing).toInt()
-                            if (xCol > (Global.MAX_COLUMNS - 1)) {
-                                xCol = (Global.MAX_COLUMNS - 1)
-                            }
-
-                            val middleColNum = (Global.MAX_COLUMNS / 2) - 1
-
-                            val column = if (tapOffset.y > verticalMidpoint) {
-                                xCol + (Global.MAX_COLUMNS / 2)
-                            } else if ((tapOffset.y < verticalMidpoint) && (xCol >= middleColNum )) {
-                                middleColNum
-                            } else {
-                                xCol
-                            }
+                            val column = getTapColumnIndex(tapOffset, widthSpacing, verticalMidpoint)
 
                             if (gameViewModel.hasFloatingBall()) {
 
@@ -362,6 +349,27 @@ private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVe
                 gAudio_victory.start()
             }
         }
+    }
+}
+
+/**
+ * Maps a tap [offset] to a board column index (0 until [Global.MAX_COLUMNS]).
+ *
+ * The board is laid out in two rows of [Global.MAX_COLUMNS]/2 columns each.
+ * Taps below [verticalMidpoint] map to the bottom row (indices shifted by MAX_COLUMNS/2);
+ * taps above it map to the top row, clamped to the last valid top-row column.
+ *
+ * @param offset Raw tap position in canvas pixels.
+ * @param widthSpacing Pixel width allocated per column.
+ * @param verticalMidpoint Y-coordinate separating the two rows.
+ * @return Column index in [0, MAX_COLUMNS).
+ */
+private fun getTapColumnIndex(offset: Offset, widthSpacing: Float, verticalMidpoint: Float): Int {
+    val halfColumns = Global.MAX_COLUMNS / 2
+    val xCol = ((offset.x - widthSpacing / 2) / widthSpacing).toInt().coerceIn(0, halfColumns - 1)
+    return when {
+        offset.y > verticalMidpoint -> xCol + halfColumns
+        else -> xCol
     }
 }
 
