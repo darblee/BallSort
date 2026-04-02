@@ -42,7 +42,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.tooling.preview.Preview
+import com.darblee.ballsort.ui.theme.BallSortTheme
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -549,5 +552,45 @@ fun BackPressHandler(
     DisposableEffect(key1 = backPressedDispatcher) {
         backPressedDispatcher?.addCallback(backCallback)
         onDispose { backCallback.remove() }
+    }
+}
+
+/********************* Previews ************************************/
+
+@Preview(name = "Buttons – Undo disabled", showBackground = true)
+@Composable
+private fun DrawButtonsUndoDisabledPreview() {
+    val context = LocalContext.current
+    val viewModel = remember { GameViewModel(File(context.cacheDir, "preview_hist.txt")) }
+    BallSortTheme {
+        DrawButtons(undoButtonRequestState = false, gameViewModel = viewModel)
+    }
+}
+
+@Preview(name = "Buttons – Undo enabled", showBackground = true)
+@Composable
+private fun DrawButtonsUndoEnabledPreview() {
+    val context = LocalContext.current
+    val viewModel = remember { GameViewModel(File(context.cacheDir, "preview_hist.txt")) }
+    BallSortTheme {
+        DrawButtons(undoButtonRequestState = true, gameViewModel = viewModel)
+    }
+}
+
+@Preview(name = "GameScreen – Light", showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun GameScreenLightPreview() {
+    val historyFile = File(LocalContext.current.cacheDir, "preview_hist.txt")
+    BallSortTheme(darkTheme = false) {
+        GameScreen(historyFile = historyFile)
+    }
+}
+
+@Preview(name = "GameScreen – Dark", showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun GameScreenDarkPreview() {
+    val historyFile = File(LocalContext.current.cacheDir, "preview_hist.txt")
+    BallSortTheme(darkTheme = true) {
+        GameScreen(historyFile = historyFile)
     }
 }
