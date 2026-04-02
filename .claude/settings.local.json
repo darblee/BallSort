@@ -12,7 +12,9 @@
       "Bash(powershell.exe -Command \"& ''C:\\\\Users\\\\darbl\\\\AndroidStudioProjects\\\\BallSort\\\\gradlew.bat'' compileDebugKotlin --console=plain 2>&1\")",
       "Bash(powershell.exe -Command \"git diff --stat HEAD -- ''app/src/main/java/com/darblee/ballsort/ui/screens/GameScreen.kt''\")",
       "Bash(.gradlew.bat --stop)",
-      "Bash(./gradlew.bat:*)"
+      "Bash(./gradlew.bat:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(./gradlew compileDebugKotlin:*)"
     ]
   }
 }

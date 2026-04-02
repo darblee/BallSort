@@ -20,6 +20,13 @@ import com.darblee.ballsort.ui.theme.BallSortTheme
 
 lateinit var gAudio_victory: MediaPlayer
 
+/**
+ * The main entry point of the Ball Sort application.
+ *
+ * This activity handles the initialization of the game's user interface using Jetpack Compose,
+ * manages global audio resources such as the victory sound effect, and enforces the
+ * required screen orientation for the gameplay experience.
+ */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
