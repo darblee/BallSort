@@ -278,10 +278,9 @@ private fun DrawGameBoard(
                                 if (column == gameViewModel.floatingBallColumn) {
                                     view.click()
                                     gameViewModel.userSelectColumnToPush(column)
-                                }
 
                                 // Only push if this is valid column to move to
-                                if (gameViewModel.validColumnToMoveTo(column)) {
+                                } else if (gameViewModel.validColumnToMoveTo(column)) {
                                     view.click()
                                     gameViewModel.userSelectColumnToPush(column)
                                 }
