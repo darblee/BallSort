@@ -349,13 +349,13 @@ private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVe
                         easing = LinearOutSlowInEasing
                     )
                 )
+                // Pause for 0.5 second to allow user to see victory message before it disappears
+                delay(500)
+
                 gameViewModel.setModeUpdateGameBoard()
 
                 animateCtl.snapTo(0f)
                 animateCtl.stop()
-
-                // Pause for 0.5 second to allow user to see victory message before it disappear
-                delay(500)
             }  // launch
 
             launch(Dispatchers.Main) {
