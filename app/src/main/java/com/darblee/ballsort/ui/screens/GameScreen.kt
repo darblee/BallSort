@@ -166,6 +166,28 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
 
 
 /**
+ * Holds all layout scalars and pre-computed tube origins for a given canvas size.
+ *
+ * Computed once in [DrawGameBoard] whenever the canvas size changes (via [remember]),
+ * then passed to drawing and hit-test helpers so they never re-derive these values.
+ *
+ * @property ballRadius Radius of each ball in pixels.
+ * @property widthSpacing Pixel width allocated per column.
+ * @property verticalSpacing Y-offset of the top row of tubes.
+ * @property verticalMidpoint Y-offset of the bottom row of tubes (also the row divider for tap detection).
+ * @property columnLength Height of one tube in pixels (ballRadius * 10).
+ * @property tubeOrigins Pre-computed (x, y) origin for each column's tube, indexed by column number.
+ */
+private data class BoardLayout(
+    val ballRadius: Float,
+    val widthSpacing: Float,
+    val verticalSpacing: Float,
+    val verticalMidpoint: Float,
+    val columnLength: Float,
+    val tubeOrigins: List<Offset>
+)
+
+/**
  * Renders the interactive game board using a Canvas and handles user touch input.
  *
  * This composable draws the test tubes (columns) and the balls based on the current game state.
@@ -214,22 +236,29 @@ private fun DrawGameBoard(
     Box {
         val view = LocalView.current
 
-        // Capture canvas size so layout values can be computed once per size change,
-        // not on every frame draw during animations.
+        // Recompute layout once per canvas size change, not on every draw frame.
         var canvasSize by remember { mutableStateOf(IntSize.Zero) }
-        val layoutValues = remember(canvasSize) {
+        val layout = remember(canvasSize) {
             val w = canvasSize.width.toFloat()
             val h = canvasSize.height.toFloat()
             val ws = w / ((Global.MAX_COLUMNS / 2) + 1)
             val br = minOf(h / 23f, ws * 0.45f)
             val vs = (h - 20f * br) / 3f
             val cl = br * 10f
-            floatArrayOf(ws, br, vs, (vs * 2) + cl)
+            val midpoint = (vs * 2) + cl
+            BoardLayout(
+                ballRadius = br,
+                widthSpacing = ws,
+                verticalSpacing = vs,
+                verticalMidpoint = midpoint,
+                columnLength = cl,
+                tubeOrigins = List(Global.MAX_COLUMNS) { col ->
+                    val x = ((col % (Global.MAX_COLUMNS / 2)) + 1) * ws
+                    val y = if (col < Global.MAX_COLUMNS / 2) vs else midpoint
+                    Offset(x, y)
+                }
+            )
         }
-        val widthSpacing = layoutValues[0]
-        val ballRadius = layoutValues[1]
-        val verticalSpacing = layoutValues[2]
-        val verticalMidpoint = layoutValues[3]
 
         Canvas(
             modifier = modifier
@@ -238,7 +267,7 @@ private fun DrawGameBoard(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = { tapOffset ->
-                            val column = getTapColumnIndex(tapOffset, widthSpacing, verticalMidpoint)
+                            val column = getTapColumnIndex(tapOffset, layout)
 
                             if (gameViewModel.hasFloatingBall()) {
 
@@ -267,42 +296,24 @@ private fun DrawGameBoard(
             @Suppress("UNUSED_EXPRESSION")
             currentGameUIState.value
 
-            val drawScope = this
-            var startX: Float
-            var startY: Float
-
-            with (drawScope) {
-                val columnLength = ballRadius * 10
-
-                for (curCol in 0..< Global.MAX_COLUMNS) {
-                    startY = if (curCol < (Global.MAX_COLUMNS / 2)) {
-                        verticalSpacing
-                    } else {
-                        verticalMidpoint
-                    }
-                    startX = ((curCol % (Global.MAX_COLUMNS / 2)) + 1) * widthSpacing
-
-                    drawLine(
-                        color = Color.White,
-                        start = Offset(startX, startY + (1.5F * ballRadius)),
-                        end = Offset(startX, (startY + columnLength)),
-                        strokeWidth = 10f
-                    )
-
-                    for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) {
-                        drawBall(this, curCol, curSlot, gameViewModel, ballRadius, widthSpacing, verticalSpacing)
-                    }
+            for (curCol in 0 until Global.MAX_COLUMNS) {
+                val origin = layout.tubeOrigins[curCol]
+                drawLine(
+                    color = Color.White,
+                    start = Offset(origin.x, origin.y + (1.5F * layout.ballRadius)),
+                    end = Offset(origin.x, origin.y + layout.columnLength),
+                    strokeWidth = 10f
+                )
+                for (curSlot in 0 until Global.MAX_SLOT_PER_COLUMN) {
+                    drawBall(this, curCol, curSlot, gameViewModel, layout)
                 }
-                if (popBall) {
-                    animatePopBallPerform(this, gameViewModel, ballRadius, widthSpacing, verticalSpacing)
-                }
+            }
+            if (popBall) {
+                animatePopBallPerform(this, gameViewModel, layout)
+            }
 
-                if (announceVictory) {
-                    animateVictoryMsgInvoke(
-                        drawScope,
-                        animatedVictoryMessage,
-                        textMeasurer)
-                }
+            if (announceVictory) {
+                animateVictoryMsgInvoke(this, animatedVictoryMessage, textMeasurer)
             }
         }
     }
@@ -356,19 +367,18 @@ private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVe
  * Maps a tap [offset] to a board column index (0 until [Global.MAX_COLUMNS]).
  *
  * The board is laid out in two rows of [Global.MAX_COLUMNS]/2 columns each.
- * Taps below [verticalMidpoint] map to the bottom row (indices shifted by MAX_COLUMNS/2);
+ * Taps below [BoardLayout.verticalMidpoint] map to the bottom row (indices shifted by MAX_COLUMNS/2);
  * taps above it map to the top row, clamped to the last valid top-row column.
  *
  * @param offset Raw tap position in canvas pixels.
- * @param widthSpacing Pixel width allocated per column.
- * @param verticalMidpoint Y-coordinate separating the two rows.
+ * @param layout Pre-computed board layout providing widthSpacing and verticalMidpoint.
  * @return Column index in [0, MAX_COLUMNS).
  */
-private fun getTapColumnIndex(offset: Offset, widthSpacing: Float, verticalMidpoint: Float): Int {
+private fun getTapColumnIndex(offset: Offset, layout: BoardLayout): Int {
     val halfColumns = Global.MAX_COLUMNS / 2
-    val xCol = ((offset.x - widthSpacing / 2) / widthSpacing).toInt().coerceIn(0, halfColumns - 1)
+    val xCol = ((offset.x - layout.widthSpacing / 2) / layout.widthSpacing).toInt().coerceIn(0, halfColumns - 1)
     return when {
-        offset.y > verticalMidpoint -> xCol + halfColumns
+        offset.y > layout.verticalMidpoint -> xCol + halfColumns
         else -> xCol
     }
 }
@@ -438,39 +448,26 @@ private fun AnimateVictoryMessageReset(animateCtl: Animatable<Float, AnimationVe
  * @param col Specified column to draw ball on
  * @param slot Specified slot to draw ball on. If the slot is -1, then this is a floating ball
  */
-fun drawBall(
+private fun drawBall(
     drawScope: DrawScope,
     col: Int,
     slot: Int,
     gameViewModel: GameViewModel,
-    ballRadius: Float,
-    widthSpacing: Float,
-    verticalSpacing: Float
+    layout: BoardLayout
 ) {
-    var startX: Float
-    var startY: Float
-
-    val columnLength = ballRadius * 10
-
+    val origin = layout.tubeOrigins[col]
     with (drawScope) {
-        startY = if (col < (Global.MAX_COLUMNS / 2)) {
-            verticalSpacing
-        } else {
-            (verticalSpacing * 2) + columnLength
-        }
-        startX = ((col % (Global.MAX_COLUMNS / 2)) + 1) * widthSpacing
-
         if (slot != -1) {
             drawCircle(
                 color = gameViewModel.getBallColor(col, slot),
-                radius = ballRadius,
-                center = Offset(startX, startY + yDistance(slot, ballRadius))
+                radius = layout.ballRadius,
+                center = Offset(origin.x, origin.y + yDistance(slot, layout.ballRadius))
             )
         } else {
             drawCircle(
                 color = colorList[gameViewModel.floatingBallColorInt],
-                radius = ballRadius,
-                center = Offset(startX, startY + ballRadius * 0.5f)
+                radius = layout.ballRadius,
+                center = Offset(origin.x, origin.y + layout.ballRadius * 0.5f)
             )
         }
     }
@@ -516,11 +513,9 @@ private fun animatePopBallSetup()
 private fun animatePopBallPerform(
     drawScope: DrawScope,
     gameViewModel: GameViewModel,
-    ballRadius: Float,
-    widthSpacing: Float,
-    verticalSpacing: Float
+    layout: BoardLayout
 ) {
-    drawBall(drawScope, gameViewModel.floatingBallColumn, -1, gameViewModel, ballRadius, widthSpacing, verticalSpacing)
+    drawBall(drawScope, gameViewModel.floatingBallColumn, -1, gameViewModel, layout)
 }
 
 /**
