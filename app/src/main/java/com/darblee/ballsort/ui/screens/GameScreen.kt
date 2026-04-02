@@ -32,8 +32,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -48,6 +50,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -214,9 +218,27 @@ private fun DrawGameBoard(
     Box {
         val view = LocalView.current
 
+        // Capture canvas size so layout values can be computed once per size change,
+        // not on every frame draw during animations.
+        var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+        val layoutValues = remember(canvasSize) {
+            val w = canvasSize.width.toFloat()
+            val h = canvasSize.height.toFloat()
+            val ws = w / ((Global.MAX_COLUMNS / 2) + 1)
+            val br = minOf(h / 23f, ws * 0.45f)
+            val vs = (h - 20f * br) / 3f
+            val cl = br * 10f
+            floatArrayOf(ws, br, vs, (vs * 2) + cl)
+        }
+        WIDTH_SPACING = layoutValues[0]
+        BALL_RADIUS = layoutValues[1]
+        VERTICAL_SPACING = layoutValues[2]
+        VERTICAL_MIDPOINT = layoutValues[3]
+
         Canvas(
             modifier = modifier
                 .fillMaxSize()
+                .onSizeChanged { canvasSize = it }
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = { tapOffset ->
@@ -258,6 +280,8 @@ private fun DrawGameBoard(
         ) {
             // Read Compose State to register a draw-phase dependency.
             // This ensures the Canvas redraws when game state changes.
+            // Suppress "Variable is never used" because we need the read to trigger redraw
+            @Suppress("UNUSED_EXPRESSION")
             currentGameUIState.value
 
             val drawScope = this
@@ -265,11 +289,7 @@ private fun DrawGameBoard(
             var startY: Float
 
             with (drawScope) {
-                WIDTH_SPACING = size.width / ((Global.MAX_COLUMNS / 2) + 1)
-                BALL_RADIUS = minOf(size.height / 23f, WIDTH_SPACING * 0.45f)
-                VERTICAL_SPACING = (size.height - 20f * BALL_RADIUS) / 3f
                 val columnLength = BALL_RADIUS * 10
-                VERTICAL_MIDPOINT = (VERTICAL_SPACING * 2) + columnLength
 
                 for (curCol in 0..< Global.MAX_COLUMNS) {
                     startY = if (curCol < (Global.MAX_COLUMNS / 2)) {
