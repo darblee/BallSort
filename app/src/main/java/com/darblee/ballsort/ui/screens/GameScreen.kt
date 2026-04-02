@@ -230,10 +230,8 @@ private fun DrawGameBoard(
         AnimateVictoryMessageReset(animatedVictoryMessage)
     }
 
-    if (popBall && updatedGameBoard) {
-        LaunchedEffect(gameUIState) {
-            gameViewModel.readyToPushBall()
-        }
+    LaunchedEffect(popBall, updatedGameBoard, gameUIState) {
+        if (popBall && updatedGameBoard) gameViewModel.readyToPushBall()
     }
 
     Box {
