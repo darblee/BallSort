@@ -12,8 +12,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew test --tests "com.darblee.ballsort.ExampleUnitTest"  # Run a single test class
 ```
 
-- AGP 9.0.0, Kotlin 2.2.10, Compose BOM 2024.09.02
-- compileSdk 36, minSdk/targetSdk 34, Java 11
+- AGP 9.1.0, Kotlin 2.3.20, Compose BOM 2026.03.01
+- compileSdk 36, minSdk 34, targetSdk 35, Java 11
 - Version catalog in `gradle/libs.versions.toml`
 
 ## Architecture
@@ -33,7 +33,7 @@ Single-module Android app (`app/`) using **MVVM** with Jetpack Compose.
 
 **Data flow**: `GameViewModel` exposes `StateFlow<GameUIState>` consumed by `GameScreen` via `collectAsStateWithLifecycle()`. The ViewModel owns the game board (`Array<Array<Int>>`, 12 columns x 4 slots), move history, and file I/O.
 
-**Persistence**: JSON files in `filesDir` — `MainBoard.txt` (board state) and `MainHistory.txt` (move history for undo/redo). Uses kotlinx.serialization.
+**Persistence**: JSON files in `filesDir` — board state and `MainHistory.txt` (move history for undo/redo, defined as `GAME_HISTORY_FILENAME` in `Global`). Uses kotlinx.serialization.
 
 **Single-screen app**: No navigation graphs. `MainActivity` renders `GameScreen` directly inside a `Scaffold`. The navigation-compose dependency is included but unused.
 
@@ -48,7 +48,7 @@ Single-module Android app (`app/`) using **MVVM** with Jetpack Compose.
 
 - `gGameViewModel` — late-init global ViewModel instance (initialized in `GameScreen`)
 - `gAudio_victory` — MediaPlayer for victory sound
-- `Global` object — constants: `MAX_COLUMNS=12`, `MAX_SLOT_PER_COLUMN=4`, filenames
+- `Global` object — constants: `MAX_COLUMNS=12`, `MAX_SLOT_PER_COLUMN=4`, `GAME_HISTORY_FILENAME`, `DEBUG_PREFIX`
 
 ## Conventions
 
