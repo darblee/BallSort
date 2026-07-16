@@ -377,13 +377,33 @@ private fun animateVictoryMsgInvoke(
         val textLayoutResult: TextLayoutResult =
             textMeasurer.measure(text = AnnotatedString(text), style = textStyle)
         val textSize = textLayoutResult.size
+        val basePosition = Offset(
+            x = (canvasWidth - textSize.width) * 0.5f, // in center
+            y = (canvasHeight * 0.25f)
+        )
+
+        // Canvas drawText has no native stroke style, so fake a bold outline by
+        // drawing the text in black at offsets all around the fill position first.
+        val outlineWidth = (animatedTextSize * 0.06f).coerceAtLeast(1f)
+        val outlineStyle = textStyle.copy(color = Color.Black)
+        val outlineOffsets = listOf(
+            Offset(-outlineWidth, -outlineWidth), Offset(0f, -outlineWidth), Offset(outlineWidth, -outlineWidth),
+            Offset(-outlineWidth, 0f),                                       Offset(outlineWidth, 0f),
+            Offset(-outlineWidth, outlineWidth),  Offset(0f, outlineWidth),  Offset(outlineWidth, outlineWidth)
+        )
+        outlineOffsets.forEach { offset ->
+            drawText(
+                textMeasurer = textMeasurer,
+                text = text,
+                topLeft = basePosition + offset,
+                style = outlineStyle
+            )
+        }
+
         drawText(
             textMeasurer = textMeasurer,
             text = text,
-            topLeft = Offset(
-                x = (canvasWidth - textSize.width) * 0.5f, // in center
-                y = (canvasHeight * 0.25f)
-            ),
+            topLeft = basePosition,
             style = textStyle
         )
     }
