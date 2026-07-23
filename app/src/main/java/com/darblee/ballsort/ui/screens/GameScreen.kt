@@ -26,14 +26,17 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -55,6 +58,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.darblee.ballsort.Global
 import com.darblee.ballsort.domain.model.GameViewModel
 import com.darblee.ballsort.gAudio_victory
+import com.darblee.ballsort.gSoundOn
 import com.darblee.ballsort.ui.GameUIState
 import com.darblee.ballsort.ui.theme.colorList
 import com.darblee.ballsort.utilities.click
@@ -110,6 +114,7 @@ fun GameScreen(historyFile: File, modifier: Modifier = Modifier) {
 private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameViewModel)
 {
     val view = LocalView.current
+    var soundOn by remember { mutableStateOf(gSoundOn) }
 
     Row(
         modifier = Modifier
@@ -157,6 +162,27 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
             )
             Text("Undo", style = MaterialTheme.typography.titleSmall)
         }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            if (soundOn) "Sound On" else "Sound Off",
+            style = MaterialTheme.typography.titleSmall
+        )
+        Switch(
+            checked = soundOn,
+            onCheckedChange = { checked ->
+                soundOn = checked
+                gSoundOn = checked
+            },
+            modifier = Modifier.padding(start = 10.dp)
+        )
     }
 }
 
@@ -344,7 +370,9 @@ private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVe
             }  // launch
 
             launch(Dispatchers.Main) {
-                gAudio_victory.start()
+                if (gSoundOn) {
+                    gAudio_victory.start()
+                }
             }
         }
     }

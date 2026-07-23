@@ -20,6 +20,11 @@ import com.darblee.ballsort.ui.theme.BallSortTheme
 
 lateinit var gAudio_victory: MediaPlayer
 
+/**
+ * Global flag controlling whether game sound effects (click and victory sound) are played.
+ */
+var gSoundOn: Boolean = true
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
