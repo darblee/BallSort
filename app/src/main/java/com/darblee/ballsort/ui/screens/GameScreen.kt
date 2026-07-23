@@ -312,8 +312,8 @@ private fun DrawGameBoard(
  * 1. Resets the animation state.
  * 2. Animates the victory message scale/progress from 0 to 1 over 1500ms.
  * 3. Plays the victory audio clip in parallel with the animation.
- * 4. Updates the game mode to [GameUIState.GameMode.UpdatedGameBoard] once complete.
- * 5. Provides a brief delay before resetting the animation controller.
+ * 4. Holds the fully visible message on screen for an additional 2 seconds.
+ * 5. Updates the game mode to [GameUIState.GameMode.UpdatedGameBoard], which hides the message.
  *
  * @param animateCtl The [Animatable] instance used to control the animation's float value.
  */
@@ -333,13 +333,14 @@ private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVe
                         easing = LinearOutSlowInEasing
                     )
                 )
+
+                // Keep the victory message fully visible for 2 more seconds before it disappears
+                delay(2000)
+
                 gameViewModel.setModeUpdateGameBoard()
 
                 animateCtl.snapTo(0f)
                 animateCtl.stop()
-
-                // Pause for 0.5 second to allow user to see victory message before it disappear
-                delay(500)
             }  // launch
 
             launch(Dispatchers.Main) {
@@ -481,15 +482,6 @@ fun yDistance(slot: Int): Float
 }
 
 /********************* Animation Routine ************************************/
-
-
-/**
- *  Setup to do the ball animation
- */
-private fun animatePopBallSetup()
-{
-// TODO: Setup the ball animation specification
-}
 
 /**
  * Renders the floating ball at the top of its origin column.
