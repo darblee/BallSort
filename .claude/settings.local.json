@@ -16,7 +16,9 @@
       "mcp__ide__getDiagnostics",
       "Bash(./gradlew compileDebugKotlin:*)",
       "PowerShell(./gradlew :app:compileDebugKotlin -q 2>&1 | Select-Object -Last 40)",
-      "Bash(./gradlew build *)"
+      "Bash(./gradlew build *)",
+      "Bash(./gradlew test *)",
+      "Bash(git pull *)"
     ]
   }
 }
