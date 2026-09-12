@@ -79,7 +79,8 @@ class GameViewModel(gHistFile: File) : ViewModel() {
      * @param slot Specified slot location
      * @return Ball color
      */
-    fun getBallColor(col: Int, slot: Int): Color = colorList[board.getBallColorInt(col, slot)]
+    fun getBallColor(col: Int, slot: Int): Color =
+        colorList.getOrElse(board.getBallColorInt(col, slot)) { Color.Unspecified }
 
     /**
      * Check to see if floating ball can move to this column.

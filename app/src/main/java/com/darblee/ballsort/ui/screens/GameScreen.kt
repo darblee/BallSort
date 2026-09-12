@@ -466,7 +466,7 @@ private fun drawBall(
             )
         } else {
             drawCircle(
-                color = colorList[gameViewModel.floatingBallColorInt],
+                color = colorList.getOrElse(gameViewModel.floatingBallColorInt) { Color.Unspecified },
                 radius = layout.ballRadius,
                 center = Offset(origin.x, origin.y + layout.ballRadius * 0.5f)
             )
