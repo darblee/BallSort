@@ -1,8 +1,10 @@
 package com.darblee.ballsort.domain.model
 
 import com.darblee.ballsort.Global
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -37,6 +39,9 @@ class GameBoardTest {
     }
 
     private fun fullColumn(color: Int) = List(Global.MAX_SLOT_PER_COLUMN) { color }
+
+    /** Matches the prettyPrint format GameViewModel.saveGameHistoryToFile uses. */
+    private val json = Json { prettyPrint = true }
 
     // ---------- hasWon ----------
 
@@ -99,6 +104,42 @@ class GameBoardTest {
         assertFalse(board.validColumnToMoveTo(1))
     }
 
+    @Test
+    fun validColumnToMoveTo_noFloatingBall_emptyColumn_isTrue() {
+        // With no ball popped, an empty column is still reported as a valid target:
+        // the emptiness check short-circuits before the color comparison.
+        val board = boardOf(listOf(3))
+        assertFalse(board.hasFloatingBall())
+        assertTrue(board.validColumnToMoveTo(Global.MAX_COLUMNS - 1))
+    }
+
+    @Test
+    fun validColumnToMoveTo_noFloatingBall_nonEmptyColumn_isFalse() {
+        // Without a floating ball the floating color is 0, which matches no real
+        // ball, so a non-empty (non-full) column is not a valid target.
+        val board = boardOf(listOf(3))
+        assertFalse(board.hasFloatingBall())
+        assertFalse(board.validColumnToMoveTo(0))
+    }
+
+    @Test
+    fun validColumnToMoveTo_columnIndexTooHigh_throws() {
+        val board = boardOf(listOf(3))
+        board.popBall(0)
+        assertThrows(IndexOutOfBoundsException::class.java) {
+            board.validColumnToMoveTo(Global.MAX_COLUMNS)
+        }
+    }
+
+    @Test
+    fun validColumnToMoveTo_negativeColumnIndex_throws() {
+        val board = boardOf(listOf(3))
+        board.popBall(0)
+        assertThrows(IndexOutOfBoundsException::class.java) {
+            board.validColumnToMoveTo(-1)
+        }
+    }
+
     // ---------- snapshot round-tripping ----------
 
     @Test
@@ -130,5 +171,58 @@ class GameBoardTest {
         board.restoreFromSnapshot(board.createSnapshot())
 
         assertFalse(board.hasFloatingBall())
+    }
+
+    // ---------- JSON persistence round-tripping ----------
+    //
+    // These exercise the same serialization format GameViewModel persists to
+    // disk (a List<List<Int>> move history via kotlinx.serialization), without
+    // pulling in the ViewModel's Android/coroutine dependencies. The encode uses
+    // prettyPrint to match saveGameHistoryToFile; the decode target type matches
+    // loadHistoryFromFile's Json.decodeFromString<List<List<Int>>>.
+
+    @Test
+    fun jsonRoundTrip_singleSnapshot_preservesBoard() {
+        val original = boardOf(fullColumn(4), listOf(2, 5), listOf(9, 9, 1))
+        val snapshot = original.createSnapshot()
+
+        val history: List<List<Int>> = listOf(snapshot)
+        val encoded = json.encodeToString(history)
+        val decoded = json.decodeFromString<List<List<Int>>>(encoded)
+
+        assertEquals(history, decoded)
+
+        val restored = GameBoard().apply { restoreFromSnapshot(decoded.last().toMutableList()) }
+        assertEquals(snapshot, restored.createSnapshot())
+    }
+
+    @Test
+    fun jsonRoundTrip_moveHistory_preservesAllSnapshots() {
+        // A three-move history, as would accumulate through play.
+        val history: List<List<Int>> = listOf(
+            boardOf(fullColumn(1)).createSnapshot(),
+            boardOf(fullColumn(1), listOf(2)).createSnapshot(),
+            boardOf(fullColumn(1), listOf(2, 3)).createSnapshot(),
+        )
+
+        val encoded = json.encodeToString(history)
+        val decoded = json.decodeFromString<List<List<Int>>>(encoded)
+
+        assertEquals(history, decoded)
+
+        // On load, GameViewModel restores the board from the last snapshot.
+        val restored = GameBoard().apply { restoreFromSnapshot(decoded.last().toMutableList()) }
+        assertEquals(history.last(), restored.createSnapshot())
+    }
+
+    @Test
+    fun jsonRoundTrip_emptyHistory_decodesToEmptyList() {
+        // loadHistoryFromFile treats an empty decoded list as "no usable history";
+        // confirm the format itself round-trips an empty move history cleanly.
+        val history: List<List<Int>> = emptyList()
+        val encoded = json.encodeToString(history)
+        val decoded = json.decodeFromString<List<List<Int>>>(encoded)
+
+        assertTrue(decoded.isEmpty())
     }
 }
