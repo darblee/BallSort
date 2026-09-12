@@ -18,6 +18,16 @@ data class GameUIState(
         private set
 
     /**
+     * Monotonically-increasing id bumped by every `setMode` transition. The game
+     * board itself ([GameViewModel]'s `Array<Array<Int>>`) is not Compose-observable,
+     * so the Canvas reads this value to register a draw-phase dependency: reading a
+     * value that is guaranteed to change on every state transition forces the Canvas
+     * to redraw the (externally-mutated) board. Do not suppress the increment.
+     */
+    var stateId = _stateId
+        private set
+
+    /**
      * Various game modes for UI state
      *
      * @property Initialization Initializing Game View Model, such as loading game file content

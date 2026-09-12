@@ -291,11 +291,13 @@ private fun DrawGameBoard(
                     )
                 }  // .pointerInput
         ) {
-            // Read Compose State to register a draw-phase dependency.
-            // This ensures the Canvas redraws when game state changes.
-            // Suppress "Variable is never used" because we need the read to trigger redraw
+            // Register a draw-phase dependency on the game state. stateId is bumped
+            // by every setMode() transition (see GameUIState.stateId), so reading it
+            // here forces the Canvas to redraw whenever the board changes — including
+            // "New Game", whose randomized board lives in a non-observable array.
+            // Suppress "Variable is never used" because we need the read to trigger redraw.
             @Suppress("UNUSED_EXPRESSION")
-            currentGameUIState.value
+            currentGameUIState.value.stateId
 
             for (curCol in 0 until Global.MAX_COLUMNS) {
                 val origin = layout.tubeOrigins[curCol]
