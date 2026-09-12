@@ -40,7 +40,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -511,20 +513,67 @@ private fun drawBall(
     layout: BoardLayout
 ) {
     val origin = layout.tubeOrigins[col]
+    if (slot != -1) {
+        val center = Offset(origin.x, origin.y + yDistance(slot, layout.ballRadius))
+        drawSphere(drawScope, center, layout.ballRadius, gameViewModel.getBallColor(col, slot))
+    } else {
+        val center = Offset(origin.x, origin.y + layout.ballRadius * 0.5f)
+        val color = colorList.getOrElse(gameViewModel.floatingBallColorInt) { Color.Unspecified }
+        drawSphere(drawScope, center, layout.ballRadius, color)
+    }
+}
+
+/**
+ * Draws a shaded sphere to give a ball a 3D appearance.
+ *
+ * The illusion is built from three layers: a base fill in [baseColor], a radial
+ * gradient shading the surface from a lighter top-left toward a darker bottom-right
+ * (simulating a light source in the upper-left), and a small soft specular
+ * highlight for the glossy reflection.
+ *
+ * @param drawScope Canvas scope to draw on.
+ * @param center Center of the ball.
+ * @param radius Radius of the ball.
+ * @param baseColor The ball's color.
+ */
+private fun drawSphere(
+    drawScope: DrawScope,
+    center: Offset,
+    radius: Float,
+    baseColor: Color
+) {
+    if (baseColor == Color.Unspecified || radius <= 0f) return
+
+    val light = lerp(baseColor, Color.White, 0.55f)
+    val dark = lerp(baseColor, Color.Black, 0.45f)
+    // Light source sits toward the upper-left of the ball.
+    val lightOffset = Offset(center.x - radius * 0.35f, center.y - radius * 0.35f)
+
     with (drawScope) {
-        if (slot != -1) {
-            drawCircle(
-                color = gameViewModel.getBallColor(col, slot),
-                radius = layout.ballRadius,
-                center = Offset(origin.x, origin.y + yDistance(slot, layout.ballRadius))
-            )
-        } else {
-            drawCircle(
-                color = colorList.getOrElse(gameViewModel.floatingBallColorInt) { Color.Unspecified },
-                radius = layout.ballRadius,
-                center = Offset(origin.x, origin.y + layout.ballRadius * 0.5f)
-            )
-        }
+        // Base fill.
+        drawCircle(color = baseColor, radius = radius, center = center)
+
+        // Surface shading: bright near the light, falling off to the dark edge.
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(light, baseColor, dark),
+                center = lightOffset,
+                radius = radius * 1.5f
+            ),
+            radius = radius,
+            center = center
+        )
+
+        // Specular highlight (glossy reflection).
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(Color.White.copy(alpha = 0.85f), Color.Transparent),
+                center = lightOffset,
+                radius = radius * 0.55f
+            ),
+            radius = radius * 0.55f,
+            center = lightOffset
+        )
     }
 }
 
