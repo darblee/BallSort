@@ -491,15 +491,6 @@ fun yDistance(slot: Int, ballRadius: Float): Float
 
 /********************* Animation Routine ************************************/
 
-
-/**
- *  Setup to do the ball animation
- */
-private fun animatePopBallSetup()
-{
-// TODO: Setup the ball animation specification
-}
-
 /**
  * Renders the floating ball at the top of its origin column.
  *
