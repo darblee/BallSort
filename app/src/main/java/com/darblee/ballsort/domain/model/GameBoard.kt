@@ -100,13 +100,17 @@ class GameBoard {
     /**
      * Randomize the board for a new game.
      * Starts from a winning state and makes 100 random moves to shuffle.
+     * Re-shuffles if the result is still a winning state, so a new game never
+     * begins already solved.
      */
     fun randomize() {
-        resetToWinningState()
-        repeat(100) {
-            makeOneRandomMove()
-        }
-        packBoard()
+        do {
+            resetToWinningState()
+            repeat(100) {
+                makeOneRandomMove()
+            }
+            packBoard()
+        } while (hasWon())
     }
 
     /**
