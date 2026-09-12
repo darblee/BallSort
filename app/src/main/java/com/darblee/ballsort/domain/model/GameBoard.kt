@@ -282,16 +282,6 @@ class GameBoard {
     private fun getNonEmptyColumnCount(): Int =
         (0..<Global.MAX_COLUMNS).count { !isColumnEmpty(it) }
 
-    private fun getOpenColumnCount(): Int {
-        var count = 0
-
-        for (curCol in 0..<Global.MAX_COLUMNS) {
-            if (hasOpenSlot(curCol)) count++
-        }
-
-        return count
-    }
-
     /**
      * Count the columns eligible to receive a pushed ball: those with an open
      * slot, excluding the column we just popped from.
@@ -521,19 +511,6 @@ class GameBoard {
                 }
             }
             curColForPush++
-        }
-    }
-
-    /**
-     * Print the game board for debugging purposes.
-     */
-    fun printBoard() {
-        Log.i(Global.DEBUG_PREFIX, "======= Game Board =========")
-        for (curCol in 0..<Global.MAX_COLUMNS) {
-            for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
-                val ballColor = cells[curCol][curSlot]
-                Log.i(Global.DEBUG_PREFIX, "$curCol, $curSlot = $ballColor")
-            }
         }
     }
 }

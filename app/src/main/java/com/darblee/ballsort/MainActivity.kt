@@ -74,6 +74,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Sets up the primary user interface structure for the application.
+ *
+ * This composable wraps the [GameScreen] within a [Scaffold] to manage the layout
+ * and ensure that the game content respects system bars and provides proper
+ * padding for the UI.
+ *
+ * @param historyFile The file used for persisting and loading game progress and history data.
+ */
 @Composable
 private fun MainViewImplementation(historyFile: java.io.File)
 {
