@@ -61,15 +61,7 @@ class GameBoard {
         if (isColumnEmpty(col)) return true
         if (isColumnFull(col)) return false
 
-        if (cells[col][2] != 0) {
-            return cells[col][2] == floatingBallColorInt
-        }
-
-        if (cells[col][1] != 0) {
-            return cells[col][1] == floatingBallColorInt
-        }
-
-        return cells[col][0] == floatingBallColorInt
+        return cells[col][topFilledSlot(col)] == floatingBallColorInt
     }
 
     /**
@@ -95,13 +87,12 @@ class GameBoard {
     fun hasWon(): Boolean {
         for (curCol in 0..<Global.MAX_COLUMNS) {
             if (isColumnEmpty(curCol)) continue
+            if (!isColumnFull(curCol)) return false
 
-            if (isColumnFull(curCol)) {
-                if ((cells[curCol][0] == cells[curCol][1]) &&
-                    (cells[curCol][0] == cells[curCol][2]) &&
-                    (cells[curCol][0] == cells[curCol][3])) continue
+            val color = cells[curCol][0]
+            for (curSlot in 1..<Global.MAX_SLOT_PER_COLUMN) {
+                if (cells[curCol][curSlot] != color) return false
             }
-            return false
         }
         return true
     }
@@ -150,6 +141,16 @@ class GameBoard {
     /************************ Private implementation ************************/
 
     private fun hasOpenSlot(col: Int): Boolean = cells[col][Global.MAX_SLOT_PER_COLUMN - 1] == 0
+
+    /**
+     * Index of the highest filled slot in a column, or -1 if the column is empty.
+     */
+    private fun topFilledSlot(col: Int): Int {
+        for (curSlot in Global.MAX_SLOT_PER_COLUMN - 1 downTo 0) {
+            if (cells[col][curSlot] != 0) return curSlot
+        }
+        return -1
+    }
 
     private fun resetFloatingBall() {
         floatingBallColorInt = 0
@@ -207,36 +208,23 @@ class GameBoard {
             return false
         }
 
-        if (cells[col][0] == 0) {
-            cells[col][0] = ballColorInt
-            return true
-        }
+        for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
+            if (cells[col][curSlot] != 0) continue
 
-        if (cells[col][1] == 0) {
-            if ((soft) && (cells[col][0] == ballColorInt)) return false
-            cells[col][1] = ballColorInt
-            return true
-        }
+            // The bottom slot always accepts a ball.
+            if (curSlot == 0) {
+                cells[col][0] = ballColorInt
+                return true
+            }
 
-        if (cells[col][2] == 0) {
             // (soft push only) If we are attempting to add ball on top of another of same color, reject it
-            if ((soft) && (cells[col][1] == ballColorInt)) return false
+            if ((soft) && (cells[col][curSlot - 1] == ballColorInt)) return false
 
-            // (soft push only) If we are attempting to add ball on top of homogenous column, then reject it
-            if ((soft) && (cells[col][0] == cells[col][1])) return false
-
-            cells[col][2] = ballColorInt
-            return true
-        }
-
-        if (cells[col][3] == 0) {
-            // (soft push only) If we are attempting to add ball on top of another of same color, reject it
-            if ((soft) && (cells[col][2] == ballColorInt)) return false
-
-            // (soft push only) If we are attempting to add ball on top of shallow homogenous column, then reject it
+            // (soft push only) If we are attempting to add ball on top of an already
+            // shallow-homogenous column, then reject it
             if ((soft) && (isShallowHomogenous(col))) return false
 
-            cells[col][3] = ballColorInt
+            cells[col][curSlot] = ballColorInt
             return true
         }
         return false
@@ -247,21 +235,11 @@ class GameBoard {
      * multiple balls with the same color adjacent on top.
      */
     private fun isShallowHomogenous(col: Int): Boolean {
-        if (isColumnEmpty(col)) return false
-
-        if (cells[col][1] == 0) return false
-
-        if (cells[col][2] == 0) {
-            return cells[col][0] == cells[col][1]
+        // Scan adjacent filled pairs from the bottom up. Stop at the first empty slot.
+        for (curSlot in 1..<Global.MAX_SLOT_PER_COLUMN) {
+            if (cells[col][curSlot] == 0) break
+            if (cells[col][curSlot] == cells[col][curSlot - 1]) return true
         }
-
-        // At this point, we have 3 or more balls.
-        if (cells[col][0] == cells[col][1]) return true
-
-        if (cells[col][1] == cells[col][2]) return true
-
-        if (cells[col][2] == cells[col][3]) return true
-
         return false
     }
 
@@ -272,24 +250,19 @@ class GameBoard {
      * regardless of their position within the column.
      */
     private fun isDeepHomogenous(col: Int): Boolean {
-        if (isColumnEmpty(col)) return false
+        // A column qualifies once any single color occurs at least this many times,
+        // regardless of the balls' positions within the column.
+        val deepThreshold = 3
 
-        // If this column only has 2 balls, then this does not qualify
-        if (cells[col][2] == 0) return false
+        val colorCounts = HashMap<Int, Int>()
+        for (curSlot in 0..<Global.MAX_SLOT_PER_COLUMN) {
+            val color = cells[col][curSlot]
+            if (color == 0) continue
 
-        val color1 = cells[col][0]
-        val color2 = cells[col][1]
-        val color3 = cells[col][2]
-        val color4 = cells[col][3]
-
-        if ((color1 == color2) && (color1 == color3)) return true
-
-        if ((color1 == color2) && (color1 == color4)) return true
-
-        if ((color1 == color3) && (color1 == color4)) return true
-
-        if ((color2 == color3) && (color2 == color4)) return true
-
+            val newCount = (colorCounts[color] ?: 0) + 1
+            if (newCount >= deepThreshold) return true
+            colorCounts[color] = newCount
+        }
         return false
     }
 
