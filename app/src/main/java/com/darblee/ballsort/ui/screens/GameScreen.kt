@@ -249,6 +249,12 @@ private fun DrawGameBoard(
      */
     val textMeasurer = rememberTextMeasurer()
     val animatedVictoryMessage = remember { Animatable(initialValue = 0f) }
+    // This mount gate bounds the victory effect's lifecycle. `announceVictory` is true
+    // only while mode == WonGame (see GameViewModel.setMode), and reaching WonGame always
+    // passes through another mode first, so each victory is exactly one false->true->false
+    // cycle. That means AnimateVictoryMessageSetup enters composition once per victory and
+    // its LaunchedEffect(Unit) restarts on each entry -- do not weaken this gate, or that
+    // "run once per victory" guarantee breaks.
     if (announceVictory) {
         AnimateVictoryMessageSetup(animatedVictoryMessage, gameViewModel)
     } else {
