@@ -156,6 +156,10 @@ class GameBoard {
         return -1
     }
 
+    /**
+     * Resets the floating ball state by clearing the color and resetting the source column index.
+     * This effectively indicates that no ball is currently being moved or held.
+     */
     private fun resetFloatingBall() {
         floatingBallColorInt = 0
         floatingBallColumn = -1
@@ -270,14 +274,13 @@ class GameBoard {
         return false
     }
 
-    private fun getNonEmptyColumnCount(): Int {
-        var count = Global.MAX_COLUMNS
-
-        for (curCol in 0..<Global.MAX_COLUMNS) {
-            if (isColumnEmpty(curCol)) count--
-        }
-        return count
-    }
+    /**
+     * Counts the number of columns that contain at least one ball.
+     *
+     * @return The number of non-empty columns.
+     */
+    private fun getNonEmptyColumnCount(): Int =
+        (0..<Global.MAX_COLUMNS).count { !isColumnEmpty(it) }
 
     private fun getOpenColumnCount(): Int {
         var count = 0
@@ -305,6 +308,12 @@ class GameBoard {
         return count
     }
 
+    /**
+     * Counts the number of columns on the board that are considered shallow homogenous.
+     * A column is shallow homogenous if it contains at least two adjacent balls of the same color.
+     *
+     * @return The total count of shallow homogenous columns.
+     */
     private fun getShallowHomogenousColumnCount(): Int {
         var count = 0
 
@@ -315,6 +324,11 @@ class GameBoard {
         return count
     }
 
+    /**
+     * Count the number of columns that meet the "deeply homogenous" criteria.
+     *
+     * @return The number of columns containing at least three balls of the same color.
+     */
     private fun getDeepHomogenousColumnCount(): Int {
         var count = 0
 
@@ -344,6 +358,11 @@ class GameBoard {
         }
     }
 
+    /**
+     * Push a ball into the first column that has an open slot, searching from left to right.
+     *
+     * @param ballColorInt The color ID of the ball to be placed.
+     */
     private fun pushToFirstAvailableSlot(ballColorInt: Int) {
         var curCol = 0
         while (curCol < Global.MAX_COLUMNS) {
@@ -355,6 +374,14 @@ class GameBoard {
         }
     }
 
+    /**
+     * Executes a single random move by popping a ball from one column and pushing it into another.
+     *
+     * The method first attempts to pop a ball from a "homogenous" column (one containing
+     * multiple balls of the same color) to encourage shuffling. If no such column is found,
+     * it performs a standard random pop. The popped ball is then pushed into a different
+     * random column that has available space.
+     */
     private fun makeOneRandomMove() {
         val (curColForPop, ballColorInt) = randomPopBall(homogenousOnly = true)
         if (ballColorInt != 0) {
