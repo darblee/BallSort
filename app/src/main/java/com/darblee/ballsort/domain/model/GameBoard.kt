@@ -285,6 +285,22 @@ class GameBoard {
         return count
     }
 
+    /**
+     * Count the columns eligible to receive a pushed ball: those with an open
+     * slot, excluding the column we just popped from.
+     *
+     * @param avoidColumnNumber Column to exclude (the one we just popped from)
+     */
+    private fun getPushableColumnCount(avoidColumnNumber: Int): Int {
+        var count = 0
+
+        for (curCol in 0..<Global.MAX_COLUMNS) {
+            if ((curCol != avoidColumnNumber) && hasOpenSlot(curCol)) count++
+        }
+
+        return count
+    }
+
     private fun getShallowHomogenousColumnCount(): Int {
         var count = 0
 
@@ -422,7 +438,10 @@ class GameBoard {
      * @param avoidColumnNumber Avoid pushing to this column (the one we just popped from)
      */
     private fun randomPush(ballColorInt: Int, avoidColumnNumber: Int) {
-        var randomIndexForPush = Random.nextInt(1, getOpenColumnCount())
+        val pushableColumnCount = getPushableColumnCount(avoidColumnNumber)
+        if (pushableColumnCount == 0) return
+
+        var randomIndexForPush = Random.nextInt(1, pushableColumnCount + 1)
         var curColForPush = 0
         softPushLoop1@ while (curColForPush < Global.MAX_COLUMNS) {
             if ((curColForPush != avoidColumnNumber) && (hasOpenSlot(curColForPush))) {
@@ -441,7 +460,7 @@ class GameBoard {
         }
 
         // Soft push failed. Try another soft push
-        randomIndexForPush = Random.nextInt(1, (getOpenColumnCount()))
+        randomIndexForPush = Random.nextInt(1, pushableColumnCount + 1)
         curColForPush = 0
         softPushLoop2@ while (curColForPush < Global.MAX_COLUMNS) {
             if ((curColForPush != avoidColumnNumber) && (hasOpenSlot(curColForPush))) {
@@ -460,7 +479,7 @@ class GameBoard {
         }
 
         // Soft push failed. Try again, but this time do a hard push
-        randomIndexForPush = Random.nextInt(1, (getOpenColumnCount()))
+        randomIndexForPush = Random.nextInt(1, pushableColumnCount + 1)
         curColForPush = 0
         while (curColForPush < Global.MAX_COLUMNS) {
             if ((curColForPush != avoidColumnNumber) && (hasOpenSlot(curColForPush))) {

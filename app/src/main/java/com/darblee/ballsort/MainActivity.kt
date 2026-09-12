@@ -1,12 +1,12 @@
 package com.darblee.ballsort
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("SourceLockedOrientationActivity")
     @Composable
     fun ForcePortraitMode() {
-        val activity = LocalContext.current as? Activity
+        val activity = LocalActivity.current
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     }
 
