@@ -70,6 +70,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * The main entry point for the Ball Sort game screen.
@@ -348,7 +349,7 @@ private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVe
                     )
                 )
                 // Pause for 0.5 second to allow user to see victory message before it disappears
-                delay(500)
+                delay(500.milliseconds)
 
                 gameViewModel.setModeUpdateGameBoard()
 
