@@ -21,6 +21,11 @@ import com.darblee.ballsort.ui.theme.BallSortTheme
 lateinit var gAudio_victory: MediaPlayer
 
 /**
+ * Global flag controlling whether game sound effects (click and victory sound) are played.
+ */
+var gSoundOn: Boolean = true
+
+/**
  * The main entry point of the Ball Sort application.
  *
  * This activity handles the initialization of the game's user interface using Jetpack Compose,

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,6 +63,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.darblee.ballsort.Global
 import com.darblee.ballsort.domain.model.GameViewModel
 import com.darblee.ballsort.gAudio_victory
+import com.darblee.ballsort.gSoundOn
 import com.darblee.ballsort.ui.GameUIState
 import com.darblee.ballsort.ui.theme.colorList
 import com.darblee.ballsort.utilities.click
@@ -118,6 +120,7 @@ fun GameScreen(historyFile: File, modifier: Modifier = Modifier) {
 private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameViewModel)
 {
     val view = LocalView.current
+    var soundOn by remember { mutableStateOf(gSoundOn) }
 
     Row(
         modifier = Modifier
@@ -165,6 +168,27 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
             )
             Text("Undo", style = MaterialTheme.typography.titleSmall)
         }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            if (soundOn) "Sound On" else "Sound Off",
+            style = MaterialTheme.typography.titleSmall
+        )
+        Switch(
+            checked = soundOn,
+            onCheckedChange = { checked ->
+                soundOn = checked
+                gSoundOn = checked
+            },
+            modifier = Modifier.padding(start = 10.dp)
+        )
     }
 }
 
@@ -329,8 +353,8 @@ private fun DrawGameBoard(
  * 1. Resets the animation state.
  * 2. Animates the victory message scale/progress from 0 to 1 over 1500ms.
  * 3. Plays the victory audio clip in parallel with the animation.
- * 4. Updates the game mode to [GameUIState.GameMode.UpdatedGameBoard] once complete.
- * 5. Provides a brief delay before resetting the animation controller.
+ * 4. Holds the fully visible message on screen for an additional 2 seconds.
+ * 5. Updates the game mode to [GameUIState.GameMode.UpdatedGameBoard], which hides the message.
  *
  * @param animateCtl The [Animatable] instance used to control the animation's float value.
  */
@@ -360,7 +384,9 @@ private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVe
             }  // launch
 
             launch(Dispatchers.Main) {
-                gAudio_victory.start()
+                if (gSoundOn) {
+                    gAudio_victory.start()
+                }
             }
         }
     }
@@ -414,13 +440,33 @@ private fun animateVictoryMsgInvoke(
         val textLayoutResult: TextLayoutResult =
             textMeasurer.measure(text = AnnotatedString(text), style = textStyle)
         val textSize = textLayoutResult.size
+        val basePosition = Offset(
+            x = (canvasWidth - textSize.width) * 0.5f, // in center
+            y = (canvasHeight * 0.25f)
+        )
+
+        // Canvas drawText has no native stroke style, so fake a bold outline by
+        // drawing the text in black at offsets all around the fill position first.
+        val outlineWidth = (animatedTextSize * 0.06f).coerceAtLeast(1f)
+        val outlineStyle = textStyle.copy(color = Color.Black)
+        val outlineOffsets = listOf(
+            Offset(-outlineWidth, -outlineWidth), Offset(0f, -outlineWidth), Offset(outlineWidth, -outlineWidth),
+            Offset(-outlineWidth, 0f),                                       Offset(outlineWidth, 0f),
+            Offset(-outlineWidth, outlineWidth),  Offset(0f, outlineWidth),  Offset(outlineWidth, outlineWidth)
+        )
+        outlineOffsets.forEach { offset ->
+            drawText(
+                textMeasurer = textMeasurer,
+                text = text,
+                topLeft = basePosition + offset,
+                style = outlineStyle
+            )
+        }
+
         drawText(
             textMeasurer = textMeasurer,
             text = text,
-            topLeft = Offset(
-                x = (canvasWidth - textSize.width) * 0.5f, // in center
-                y = (canvasHeight * 0.25f)
-            ),
+            topLeft = basePosition,
             style = textStyle
         )
     }
