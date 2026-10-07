@@ -9,7 +9,7 @@ import com.darblee.ballsort.gSoundOn
  * Perform haptic feedback and, if sound is enabled, the click sound effect.
  */
 fun View.click() = run {
-    this.let { this.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS) }
+    this.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
     if (gSoundOn) {
         this.playSoundEffect(SoundEffectConstants.CLICK)
     }
