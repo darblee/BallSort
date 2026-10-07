@@ -40,10 +40,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.tooling.preview.Preview
+import com.darblee.ballsort.ui.theme.BallSortTheme
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -51,6 +56,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,6 +74,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * The main entry point for the Ball Sort game screen.
@@ -186,10 +194,28 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
     }
 }
 
-private var BALL_RADIUS = 65f
-private var WIDTH_SPACING = 0F
-private var VERTICAL_SPACING = 200f
-private var VERTICAL_MIDPOINT = 0f
+
+/**
+ * Holds all layout scalars and pre-computed tube origins for a given canvas size.
+ *
+ * Computed once in [DrawGameBoard] whenever the canvas size changes (via [remember]),
+ * then passed to drawing and hit-test helpers so they never re-derive these values.
+ *
+ * @property ballRadius Radius of each ball in pixels.
+ * @property widthSpacing Pixel width allocated per column.
+ * @property verticalSpacing Y-offset of the top row of tubes.
+ * @property verticalMidpoint Y-offset of the bottom row of tubes (also the row divider for tap detection).
+ * @property columnLength Height of one tube in pixels (ballRadius * 10).
+ * @property tubeOrigins Pre-computed (x, y) origin for each column's tube, indexed by column number.
+ */
+private data class BoardLayout(
+    val ballRadius: Float,
+    val widthSpacing: Float,
+    val verticalSpacing: Float,
+    val verticalMidpoint: Float,
+    val columnLength: Float,
+    val tubeOrigins: List<Offset>
+)
 
 /**
  * Renders the interactive game board using a Canvas and handles user touch input.
@@ -225,41 +251,57 @@ private fun DrawGameBoard(
      */
     val textMeasurer = rememberTextMeasurer()
     val animatedVictoryMessage = remember { Animatable(initialValue = 0f) }
+    // This mount gate bounds the victory effect's lifecycle. `announceVictory` is true
+    // only while mode == WonGame (see GameViewModel.setMode), and reaching WonGame always
+    // passes through another mode first, so each victory is exactly one false->true->false
+    // cycle. That means AnimateVictoryMessageSetup enters composition once per victory and
+    // its LaunchedEffect(Unit) restarts on each entry -- do not weaken this gate, or that
+    // "run once per victory" guarantee breaks.
     if (announceVictory) {
         AnimateVictoryMessageSetup(animatedVictoryMessage, gameViewModel)
     } else {
         AnimateVictoryMessageReset(animatedVictoryMessage)
     }
 
-    if (popBall && updatedGameBoard) {
-        LaunchedEffect(gameUIState) {
-            gameViewModel.readyToPushBall()
-        }
+    LaunchedEffect(popBall, updatedGameBoard, gameUIState) {
+        if (popBall && updatedGameBoard) gameViewModel.readyToPushBall()
     }
 
     Box {
         val view = LocalView.current
 
+        // Recompute layout once per canvas size change, not on every draw frame.
+        var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+        val layout = remember(canvasSize) {
+            val w = canvasSize.width.toFloat()
+            val h = canvasSize.height.toFloat()
+            val ws = w / ((Global.MAX_COLUMNS / 2) + 1)
+            val br = minOf(h / 23f, ws * 0.45f)
+            val vs = (h - 20f * br) / 3f
+            val cl = br * 10f
+            val midpoint = (vs * 2) + cl
+            BoardLayout(
+                ballRadius = br,
+                widthSpacing = ws,
+                verticalSpacing = vs,
+                verticalMidpoint = midpoint,
+                columnLength = cl,
+                tubeOrigins = List(Global.MAX_COLUMNS) { col ->
+                    val x = ((col % (Global.MAX_COLUMNS / 2)) + 1) * ws
+                    val y = if (col < Global.MAX_COLUMNS / 2) vs else midpoint
+                    Offset(x, y)
+                }
+            )
+        }
+
         Canvas(
             modifier = modifier
                 .fillMaxSize()
+                .onSizeChanged { canvasSize = it }
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = { tapOffset ->
-                            var xCol = ((tapOffset.x - (WIDTH_SPACING / 2)) / WIDTH_SPACING).toInt()
-                            if (xCol > (Global.MAX_COLUMNS - 1)) {
-                                xCol = (Global.MAX_COLUMNS - 1)
-                            }
-
-                            val middleColNum = (Global.MAX_COLUMNS / 2) - 1
-
-                            val column = if (tapOffset.y > VERTICAL_MIDPOINT) {
-                                xCol + (Global.MAX_COLUMNS / 2)
-                            } else if ((tapOffset.y < VERTICAL_MIDPOINT) && (xCol >= middleColNum )) {
-                                middleColNum
-                            } else {
-                                xCol
-                            }
+                            val column = getTapColumnIndex(tapOffset, layout)
 
                             if (gameViewModel.hasFloatingBall()) {
 
@@ -267,10 +309,9 @@ private fun DrawGameBoard(
                                 if (column == gameViewModel.floatingBallColumn) {
                                     view.click()
                                     gameViewModel.userSelectColumnToPush(column)
-                                }
 
                                 // Only push if this is valid column to move to
-                                if (gameViewModel.validColumnToMoveTo(column)) {
+                                } else if (gameViewModel.validColumnToMoveTo(column)) {
                                     view.click()
                                     gameViewModel.userSelectColumnToPush(column)
                                 }
@@ -282,50 +323,32 @@ private fun DrawGameBoard(
                     )
                 }  // .pointerInput
         ) {
-            // Read Compose State to register a draw-phase dependency.
-            // This ensures the Canvas redraws when game state changes.
-            currentGameUIState.value
+            // Register a draw-phase dependency on the game state. stateId is bumped
+            // by every setMode() transition (see GameUIState.stateId), so reading it
+            // here forces the Canvas to redraw whenever the board changes — including
+            // "New Game", whose randomized board lives in a non-observable array.
+            // Suppress "Variable is never used" because we need the read to trigger redraw.
+            @Suppress("UNUSED_EXPRESSION")
+            currentGameUIState.value.stateId
 
-            val drawScope = this
-            var startX: Float
-            var startY: Float
-
-            with (drawScope) {
-                WIDTH_SPACING = size.width / ((Global.MAX_COLUMNS / 2) + 1)
-                BALL_RADIUS = minOf(size.height / 23f, WIDTH_SPACING * 0.45f)
-                VERTICAL_SPACING = (size.height - 20f * BALL_RADIUS) / 3f
-                val columnLength = BALL_RADIUS * 10
-                VERTICAL_MIDPOINT = (VERTICAL_SPACING * 2) + columnLength
-
-                for (curCol in 0..< Global.MAX_COLUMNS) {
-                    startY = if (curCol < (Global.MAX_COLUMNS / 2)) {
-                        VERTICAL_SPACING
-                    } else {
-                        VERTICAL_MIDPOINT
-                    }
-                    startX = ((curCol % (Global.MAX_COLUMNS / 2)) + 1) * WIDTH_SPACING
-
-                    drawLine(
-                        color = Color.White,
-                        start = Offset(startX, startY + (1.5F * BALL_RADIUS)),
-                        end = Offset(startX, (startY + columnLength)),
-                        strokeWidth = 10f
-                    )
-
-                    for (curSlot in 0..< Global.MAX_SLOT_PER_COLUMN) {
-                        drawBall(this, curCol, curSlot, gameViewModel)
-                    }
+            for (curCol in 0 until Global.MAX_COLUMNS) {
+                val origin = layout.tubeOrigins[curCol]
+                drawLine(
+                    color = Color.White,
+                    start = Offset(origin.x, origin.y + (1.5F * layout.ballRadius)),
+                    end = Offset(origin.x, origin.y + layout.columnLength),
+                    strokeWidth = 10f
+                )
+                for (curSlot in 0 until Global.MAX_SLOT_PER_COLUMN) {
+                    drawBall(this, curCol, curSlot, gameViewModel, layout)
                 }
-                if (popBall) {
-                    animatePopBallPerform(this, gameViewModel)
-                }
+            }
+            if (popBall) {
+                animatePopBallPerform(this, gameViewModel, layout)
+            }
 
-                if (announceVictory) {
-                    animateVictoryMsgInvoke(
-                        drawScope,
-                        animatedVictoryMessage,
-                        textMeasurer)
-                }
+            if (announceVictory) {
+                animateVictoryMsgInvoke(this, animatedVictoryMessage, textMeasurer)
             }
         }
     }
@@ -359,9 +382,8 @@ private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVe
                         easing = LinearOutSlowInEasing
                     )
                 )
-
-                // Keep the victory message fully visible for 2 more seconds before it disappears
-                delay(2000)
+                // Pause for 0.5 second to allow user to see victory message before it disappears
+                delay(500.milliseconds)
 
                 gameViewModel.setModeUpdateGameBoard()
 
@@ -375,6 +397,26 @@ private fun AnimateVictoryMessageSetup(animateCtl: Animatable<Float, AnimationVe
                 }
             }
         }
+    }
+}
+
+/**
+ * Maps a tap [offset] to a board column index (0 until [Global.MAX_COLUMNS]).
+ *
+ * The board is laid out in two rows of [Global.MAX_COLUMNS]/2 columns each.
+ * Taps below [BoardLayout.verticalMidpoint] map to the bottom row (indices shifted by MAX_COLUMNS/2);
+ * taps above it map to the top row, clamped to the last valid top-row column.
+ *
+ * @param offset Raw tap position in canvas pixels.
+ * @param layout Pre-computed board layout providing widthSpacing and verticalMidpoint.
+ * @return Column index in [0, MAX_COLUMNS).
+ */
+private fun getTapColumnIndex(offset: Offset, layout: BoardLayout): Int {
+    val halfColumns = Global.MAX_COLUMNS / 2
+    val xCol = ((offset.x - layout.widthSpacing / 2) / layout.widthSpacing).toInt().coerceIn(0, halfColumns - 1)
+    return when {
+        offset.y > layout.verticalMidpoint -> xCol + halfColumns
+        else -> xCol
     }
 }
 
@@ -463,34 +505,75 @@ private fun AnimateVictoryMessageReset(animateCtl: Animatable<Float, AnimationVe
  * @param col Specified column to draw ball on
  * @param slot Specified slot to draw ball on. If the slot is -1, then this is a floating ball
  */
-fun drawBall(drawScope: DrawScope, col: Int, slot: Int, gameViewModel: GameViewModel)
-{
-    var startX: Float
-    var startY: Float
+private fun drawBall(
+    drawScope: DrawScope,
+    col: Int,
+    slot: Int,
+    gameViewModel: GameViewModel,
+    layout: BoardLayout
+) {
+    val origin = layout.tubeOrigins[col]
+    if (slot != -1) {
+        val center = Offset(origin.x, origin.y + yDistance(slot, layout.ballRadius))
+        drawSphere(drawScope, center, layout.ballRadius, gameViewModel.getBallColor(col, slot))
+    } else {
+        val center = Offset(origin.x, origin.y + layout.ballRadius * 0.5f)
+        val color = colorList.getOrElse(gameViewModel.floatingBallColorInt) { Color.Unspecified }
+        drawSphere(drawScope, center, layout.ballRadius, color)
+    }
+}
 
-    val columnLength = BALL_RADIUS * 10
+/**
+ * Draws a shaded sphere to give a ball a 3D appearance.
+ *
+ * The illusion is built from three layers: a base fill in [baseColor], a radial
+ * gradient shading the surface from a lighter top-left toward a darker bottom-right
+ * (simulating a light source in the upper-left), and a small soft specular
+ * highlight for the glossy reflection.
+ *
+ * @param drawScope Canvas scope to draw on.
+ * @param center Center of the ball.
+ * @param radius Radius of the ball.
+ * @param baseColor The ball's color.
+ */
+private fun drawSphere(
+    drawScope: DrawScope,
+    center: Offset,
+    radius: Float,
+    baseColor: Color
+) {
+    if (baseColor == Color.Unspecified || radius <= 0f) return
+
+    val light = lerp(baseColor, Color.White, 0.55f)
+    val dark = lerp(baseColor, Color.Black, 0.45f)
+    // Light source sits toward the upper-left of the ball.
+    val lightOffset = Offset(center.x - radius * 0.35f, center.y - radius * 0.35f)
 
     with (drawScope) {
-        startY = if (col < (Global.MAX_COLUMNS / 2)) {
-            VERTICAL_SPACING
-        } else {
-            (VERTICAL_SPACING * 2) + columnLength
-        }
-        startX = ((col % (Global.MAX_COLUMNS / 2)) + 1) * WIDTH_SPACING
+        // Base fill.
+        drawCircle(color = baseColor, radius = radius, center = center)
 
-        if (slot != -1) {
-            drawCircle(
-                color = gameViewModel.getBallColor(col, slot),
-                radius = BALL_RADIUS,
-                center = Offset(startX, startY + yDistance(slot))
-            )
-        } else {
-            drawCircle(
-                color = colorList[gameViewModel.floatingBallColorInt],
-                radius = BALL_RADIUS,
-                center = Offset(startX, startY + BALL_RADIUS * 0.5f)
-            )
-        }
+        // Surface shading: bright near the light, falling off to the dark edge.
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(light, baseColor, dark),
+                center = lightOffset,
+                radius = radius * 1.5f
+            ),
+            radius = radius,
+            center = center
+        )
+
+        // Specular highlight (glossy reflection).
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(Color.White.copy(alpha = 0.85f), Color.Transparent),
+                center = lightOffset,
+                radius = radius * 0.55f
+            ),
+            radius = radius * 0.55f,
+            center = lightOffset
+        )
     }
 }
 
@@ -503,10 +586,10 @@ fun drawBall(drawScope: DrawScope, col: Int, slot: Int, gameViewModel: GameViewM
  * @param slot The index of the slot in the column (0 being the bottom-most slot).
  * @return The vertical Y-axis distance from the column's starting Y-coordinate.
  */
-fun yDistance(slot: Int): Float
+fun yDistance(slot: Int, ballRadius: Float): Float
 {
-    val columnLength = BALL_RADIUS * 10
-    return (columnLength - BALL_RADIUS - (slot * (2 * BALL_RADIUS)))
+    val columnLength = ballRadius * 10
+    return (columnLength - ballRadius - (slot * (2 * ballRadius)))
 }
 
 /********************* Animation Routine ************************************/
@@ -522,9 +605,12 @@ fun yDistance(slot: Int): Float
  *
  * @param drawScope The canvas scope on which to draw the floating ball.
  */
-private fun animatePopBallPerform(drawScope: DrawScope, gameViewModel: GameViewModel)
-{
-    drawBall(drawScope, gameViewModel.floatingBallColumn, -1, gameViewModel)
+private fun animatePopBallPerform(
+    drawScope: DrawScope,
+    gameViewModel: GameViewModel,
+    layout: BoardLayout
+) {
+    drawBall(drawScope, gameViewModel.floatingBallColumn, -1, gameViewModel, layout)
 }
 
 /**
@@ -558,5 +644,45 @@ fun BackPressHandler(
     DisposableEffect(key1 = backPressedDispatcher) {
         backPressedDispatcher?.addCallback(backCallback)
         onDispose { backCallback.remove() }
+    }
+}
+
+/********************* Previews ************************************/
+
+@Preview(name = "Buttons – Undo disabled", showBackground = true)
+@Composable
+private fun DrawButtonsUndoDisabledPreview() {
+    val context = LocalContext.current
+    val viewModel = remember { GameViewModel(File(context.cacheDir, "preview_hist.txt")) }
+    BallSortTheme {
+        DrawButtons(undoButtonRequestState = false, gameViewModel = viewModel)
+    }
+}
+
+@Preview(name = "Buttons – Undo enabled", showBackground = true)
+@Composable
+private fun DrawButtonsUndoEnabledPreview() {
+    val context = LocalContext.current
+    val viewModel = remember { GameViewModel(File(context.cacheDir, "preview_hist.txt")) }
+    BallSortTheme {
+        DrawButtons(undoButtonRequestState = true, gameViewModel = viewModel)
+    }
+}
+
+@Preview(name = "GameScreen – Light", showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun GameScreenLightPreview() {
+    val historyFile = File(LocalContext.current.cacheDir, "preview_hist.txt")
+    BallSortTheme(darkTheme = false) {
+        GameScreen(historyFile = historyFile)
+    }
+}
+
+@Preview(name = "GameScreen – Dark", showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun GameScreenDarkPreview() {
+    val historyFile = File(LocalContext.current.cacheDir, "preview_hist.txt")
+    BallSortTheme(darkTheme = true) {
+        GameScreen(historyFile = historyFile)
     }
 }

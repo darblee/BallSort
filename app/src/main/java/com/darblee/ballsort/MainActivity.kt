@@ -1,12 +1,12 @@
 package com.darblee.ballsort
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +25,13 @@ lateinit var gAudio_victory: MediaPlayer
  */
 var gSoundOn: Boolean = true
 
+/**
+ * The main entry point of the Ball Sort application.
+ *
+ * This activity handles the initialization of the game's user interface using Jetpack Compose,
+ * manages global audio resources such as the victory sound effect, and enforces the
+ * required screen orientation for the gameplay experience.
+ */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,7 +61,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("SourceLockedOrientationActivity")
     @Composable
     fun ForcePortraitMode() {
-        val activity = LocalContext.current as? Activity
+        val activity = LocalActivity.current
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     }
 
@@ -67,6 +74,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Sets up the primary user interface structure for the application.
+ *
+ * This composable wraps the [GameScreen] within a [Scaffold] to manage the layout
+ * and ensure that the game content respects system bars and provides proper
+ * padding for the UI.
+ *
+ * @param historyFile The file used for persisting and loading game progress and history data.
+ */
 @Composable
 private fun MainViewImplementation(historyFile: java.io.File)
 {

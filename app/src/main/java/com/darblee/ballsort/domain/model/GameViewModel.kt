@@ -79,7 +79,8 @@ class GameViewModel(gHistFile: File) : ViewModel() {
      * @param slot Specified slot location
      * @return Ball color
      */
-    fun getBallColor(col: Int, slot: Int): Color = colorList[board.getBallColorInt(col, slot)]
+    fun getBallColor(col: Int, slot: Int): Color =
+        colorList.getOrElse(board.getBallColorInt(col, slot)) { Color.Unspecified }
 
     /**
      * Check to see if floating ball can move to this column.
@@ -275,9 +276,9 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         try {
             val format = Json { prettyPrint = true }
             val output = format.encodeToString(_moveHistory)
-            val writer = FileWriter(_historyFile)
-            writer.write(output)
-            writer.close()
+            FileWriter(_historyFile).use { writer ->
+                writer.write(output)
+            }
         } catch (e: SerializationException) {
             Log.i(Global.DEBUG_PREFIX, "Serialization error. Unable to encode ball list. Reason: ${e.message}")
         } catch (e: IllegalArgumentException) {
@@ -301,6 +302,15 @@ class GameViewModel(gHistFile: File) : ViewModel() {
             reader.close()
 
             val historyList = Json.decodeFromString<List<List<Int>>>(data)
+
+            // A well-formed file always contains at least one snapshot. An empty
+            // list means the file is present but has no usable history, so leave
+            // _moveHistory untouched and let the caller (init) start a new game.
+            if (historyList.isEmpty()) {
+                Log.i(Global.DEBUG_PREFIX, "Saved game file contained no history snapshots. Starting a new game.")
+                return
+            }
+
             _moveHistory.clear()
 
             historyList.forEach { curSnapshot ->
