@@ -249,6 +249,10 @@ class GameViewModel(gHistFile: File) : ViewModel() {
         }
     }
 
+    /**
+     * Transition the game state to indicate that a ball has been popped and
+     * the system is now waiting for the user to select a destination column.
+     */
     fun readyToPushBall() {
         setMode(GameUIState.GameMode.WaitingToPushBall)
     }
