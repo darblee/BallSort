@@ -9,12 +9,15 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -24,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -39,6 +43,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -133,7 +138,7 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
             .padding(top = 30.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        Button(
+        ThreeDButton(
             onClick = {
                 view.click()
                 gameViewModel.newGame()
@@ -146,7 +151,7 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
             )
             Text("New Game", style = MaterialTheme.typography.titleSmall)
         }
-        Button(
+        ThreeDButton(
             onClick = {
                 view.click()
                 gameViewModel.resetGame()
@@ -159,7 +164,7 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
             )
             Text("Restart", style = MaterialTheme.typography.titleSmall)
         }
-        Button(
+        ThreeDButton(
             onClick = {
                 view.click()
                 gameViewModel.userRevertToPreviousMove()
@@ -197,6 +202,67 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
     }
 }
 
+/**
+ * A [Button] styled to look like a raised, glossy 3-D control instead of Material's flat
+ * default.
+ *
+ * The convex look comes from a vertical gradient fill (light top edge fading to a darker
+ * bottom edge, as if lit from above), a drop shadow for depth, and a thin bright top border
+ * to catch the "light." This mirrors the glossy-sphere shading used for the balls on the
+ * game board elsewhere in this file, so the controls and the board read as one visual style.
+ * When [enabled] is false the button is flattened: no shadow and a desaturated, duller fill.
+ *
+ * @param onClick Invoked when the button is tapped.
+ * @param modifier Modifier applied to the underlying [Button].
+ * @param enabled Whether the button can be interacted with; also drives the raised/flat look.
+ * @param content Button content, typically an [Icon] plus a [Text] label.
+ */
+@Composable
+private fun ThreeDButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable RowScope.() -> Unit
+) {
+    val shape = ButtonDefaults.shape
+    val baseColor = MaterialTheme.colorScheme.primary.let {
+        if (enabled) it else lerp(it, MaterialTheme.colorScheme.surface, 0.6f)
+    }
+    val lightEdge = lerp(baseColor, Color.White, 0.45f)
+    val darkEdge = lerp(baseColor, Color.Black, 0.35f)
+
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        shape = shape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            disabledContainerColor = Color.Transparent
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            disabledElevation = 0.dp
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            brush = Brush.verticalGradient(
+                listOf(Color.White.copy(alpha = 0.75f), Color.Transparent)
+            )
+        ),
+        modifier = modifier
+            .shadow(
+                elevation = if (enabled) 8.dp else 0.dp,
+                shape = shape,
+                clip = false
+            )
+            .background(
+                brush = Brush.verticalGradient(listOf(lightEdge, baseColor, darkEdge)),
+                shape = shape
+            ),
+        content = content
+    )
+}
 
 /**
  * Holds all layout scalars and pre-computed tube origins for a given canvas size.
