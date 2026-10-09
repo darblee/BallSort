@@ -17,30 +17,12 @@ data class GameUIState(
     var mode = _mode
         private set
 
-    /**
-     * Monotonically-increasing id bumped by every `setMode` transition. The game
-     * board itself ([GameViewModel]'s `Array<Array<Int>>`) is not Compose-observable,
-     * so the Canvas reads this value to register a draw-phase dependency: reading a
-     * value that is guaranteed to change on every state transition forces the Canvas
-     * to redraw the (externally-mutated) board. Do not suppress the increment.
-     */
     var stateId = _stateId
         private set
 
     /**
-     * Various game modes for UI state
+     * Represents the various states of the game flow and UI logic.
      *
-     * @property Initialization Initializing Game View Model, such as loading game file content
-     * @property NewGame New game with newly randomized ball positions. Update the game board
-     * @property UpdatedGameBoard There is an updated game board. Now waiting for user to
-     * make a move
-     * @property ResetGame Reset back to the beginning of the existing game
-     * @property RevertMoveEnableUndo Undo the current move. Undo button need to remain enabled
-     * @property RevertMoveDisableUndo Undo the current move. Then disable the undo the button
-     * @property PopBall Processing ball movement
-     * @property WonGame One ball remaining. User has won the game
-     * @property WaitingToPushBall There is no winning move. It will remain this way until there is a new
-     * game or when user undo a move
      */
     sealed class GameMode {
 

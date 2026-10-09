@@ -1,12 +1,9 @@
 package com.darblee.ballsort
 
-import android.annotation.SuppressLint
-import android.content.pm.ActivityInfo
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,9 +25,10 @@ var gSoundOn: Boolean = true
 /**
  * The main entry point of the Ball Sort application.
  *
- * This activity handles the initialization of the game's user interface using Jetpack Compose,
- * manages global audio resources such as the victory sound effect, and enforces the
- * required screen orientation for the gameplay experience.
+ * This activity handles the initialization of the game's user interface using Jetpack Compose
+ * and manages global audio resources such as the victory sound effect. Both portrait and
+ * landscape orientations are supported (see `android:screenOrientation="fullUser"` in the
+ * manifest); [GameScreen] adapts its layout to whichever orientation is active.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,21 +46,10 @@ class MainActivity : ComponentActivity() {
             gAudio_victory = MediaPlayer.create(LocalContext.current, R.raw.victory)
             gAudio_victory.setAudioAttributes(playbackAttributes)
 
-            ForcePortraitMode()
             BallSortTheme {
                 MainViewImplementation(historyFile)
             }
         }
-    }
-
-    /**
-     * Force to use portrait orientation
-     */
-    @SuppressLint("SourceLockedOrientationActivity")
-    @Composable
-    fun ForcePortraitMode() {
-        val activity = LocalActivity.current
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.darblee.ballsort.ui.screens
 
 import android.app.Activity
+import android.content.res.Configuration
 import android.util.Log
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcher
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -56,6 +58,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.tooling.preview.Preview
@@ -95,7 +98,12 @@ import kotlin.time.Duration.Companion.milliseconds
  * (Initialization, New Game, Reset, Victory, etc.), responds to back press events,
  * and renders both the control buttons and the interactive game board.
  *
- * @param modifier The modifier to be applied to the root Column layout.
+ * In portrait, the buttons sit above the board (stacked in a [Column]). In landscape,
+ * the buttons move to a column on the left occupying 1/4 of the screen width, with the
+ * game board filling the remaining 3/4 on the right (a [Row]), so the board stays fully
+ * visible without competing with the buttons for vertical space.
+ *
+ * @param modifier The modifier to be applied to the root layout.
  */
 @Composable
 fun GameScreen(historyFile: File, modifier: Modifier = Modifier) {
@@ -110,37 +118,63 @@ fun GameScreen(historyFile: File, modifier: Modifier = Modifier) {
 
     Log.i(Global.DEBUG_PREFIX, "Recompose - ${gameUIState.mode}")
 
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        DrawButtons(gameUIState.undoEnabled, gameViewModel)
+    val isLandscape =
+        LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-        DrawGameBoard(Modifier, gameUIState.gridChange, gameUIState.popBall,
-            gameUIState.announceVictory, gameViewModel, gameUIState)
+    if (isLandscape) {
+        Row(modifier = modifier.fillMaxSize()) {
+            DrawButtons(
+                gameUIState.undoEnabled,
+                gameViewModel,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                isLandscape = true
+            )
+            DrawGameBoard(
+                Modifier.weight(3f).fillMaxHeight(),
+                gameUIState.gridChange, gameUIState.popBall,
+                gameUIState.announceVictory, gameViewModel, gameUIState
+            )
+        }
+    } else {
+        Column(
+            modifier = modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            DrawButtons(gameUIState.undoEnabled, gameViewModel)
+
+            DrawGameBoard(Modifier, gameUIState.gridChange, gameUIState.popBall,
+                gameUIState.announceVictory, gameViewModel, gameUIState)
+        }
     }
 }
 
 /**
  * Renders the control buttons for the game, including options to start a new game,
- * restart the current level, and undo the last move.
+ * restart the current level, undo the last move, and toggle sound.
+ *
+ * In portrait, the action buttons are laid out in a horizontal row with the sound
+ * toggle centered beneath them. In landscape, where this composable only has 1/4 of
+ * the screen width to work with (see [GameScreen]), they're stacked vertically instead
+ * so none of the pill-shaped buttons get squeezed or clipped.
  *
  * @param undoButtonRequestState Determines whether the "Undo" button is currently enabled,
  * based on whether there are moves available in the game history.
+ * @param modifier The modifier to be applied to the root layout.
+ * @param isLandscape Whether to use the narrow, vertically-stacked landscape layout.
  */
 @Composable
-private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameViewModel)
+private fun DrawButtons(
+    undoButtonRequestState: Boolean,
+    gameViewModel: GameViewModel,
+    modifier: Modifier = Modifier,
+    isLandscape: Boolean = false
+)
 {
     val view = LocalView.current
     var soundOn by remember { mutableStateOf(gSoundOn) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 30.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-    ) {
+    val actionButtons: @Composable () -> Unit = {
         ThreeDButton(
             onClick = {
                 view.click()
@@ -183,13 +217,7 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
         }
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 10.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    val soundToggle: @Composable () -> Unit = {
         IconButton(
             onClick = {
                 view.click()
@@ -202,6 +230,40 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
                 contentDescription = if (soundOn) "Sound on, tap to mute" else "Sound muted, tap to unmute",
                 modifier = Modifier.size(SwitchDefaults.IconSize * 1.5f)
             )
+        }
+    }
+
+    if (isLandscape) {
+        Column(
+            modifier = modifier
+                .fillMaxHeight()
+                .padding(horizontal = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            actionButtons()
+            soundToggle()
+        }
+    } else {
+        Column(modifier = modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 30.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                actionButtons()
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                soundToggle()
+            }
         }
     }
 }
@@ -421,7 +483,7 @@ private fun DrawGameBoard(
         if (popBall && updatedGameBoard) gameViewModel.readyToPushBall()
     }
 
-    Box {
+    Box(modifier = modifier) {
         val view = LocalView.current
 
         // Recompute layout once per canvas size change, not on every draw frame.
@@ -449,7 +511,7 @@ private fun DrawGameBoard(
         }
 
         Canvas(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .onSizeChanged { canvasSize = it }
                 .pointerInput(Unit) {

@@ -54,5 +54,5 @@ Single-module Android app (`app/`) using **MVVM** with Jetpack Compose.
 
 - Kotlin with Jetpack Compose (Canvas-based custom drawing for the game board)
 - Coroutines with `viewModelScope` for async work; `Dispatchers.IO` for file operations
-- Portrait-only orientation enforced in `MainActivity`
+- Both portrait and landscape supported (`android:screenOrientation="fullUser"`); `GameScreen` switches between a stacked (portrait) and side-by-side 1/4 buttons + 3/4 board (landscape) layout based on `LocalConfiguration`
 - KDoc documentation on public composables and ViewModel methods
