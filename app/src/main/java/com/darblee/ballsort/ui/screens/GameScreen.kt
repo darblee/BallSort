@@ -29,8 +29,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,9 +49,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -187,19 +190,101 @@ private fun DrawButtons(undoButtonRequestState: Boolean, gameViewModel: GameView
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            if (soundOn) "Sound On" else "Sound Off",
-            style = MaterialTheme.typography.titleSmall
-        )
-        Switch(
-            checked = soundOn,
-            onCheckedChange = { checked ->
-                soundOn = checked
-                gSoundOn = checked
-            },
-            modifier = Modifier.padding(start = 10.dp)
-        )
+        IconButton(
+            onClick = {
+                view.click()
+                soundOn = !soundOn
+                gSoundOn = soundOn
+            }
+        ) {
+            Icon(
+                imageVector = if (soundOn) SoundOnIcon else SoundMuteIcon,
+                contentDescription = if (soundOn) "Sound on, tap to mute" else "Sound muted, tap to unmute",
+                modifier = Modifier.size(SwitchDefaults.IconSize * 1.5f)
+            )
+        }
     }
+}
+
+/**
+ * Speaker icon (cone only, no waves) used as the shared base shape for [SoundOnIcon]
+ * and [SoundMuteIcon].
+ */
+private fun ImageVector.Builder.speakerCone() {
+    path(fill = SolidColor(Color.Black)) {
+        moveTo(3f, 9f)
+        verticalLineToRelative(6f)
+        horizontalLineToRelative(4f)
+        lineToRelative(5f, 5f)
+        verticalLineTo(4f)
+        lineTo(7f, 9f)
+        horizontalLineTo(3f)
+        close()
+    }
+}
+
+/** Speaker-with-sound-waves icon shown when the game's sound effects are enabled. */
+private val SoundOnIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "SoundOn",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        speakerCone()
+        // Two nested arcs bulging right of the cone, read as sound waves.
+        path(
+            fill = SolidColor(Color.Transparent),
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 1.8f,
+            strokeLineCap = StrokeCap.Round
+        ) {
+            moveTo(14f, 8f)
+            arcTo(5f, 5f, 0f, isMoreThanHalf = false, isPositiveArc = true, x1 = 14f, y1 = 16f)
+        }
+        path(
+            fill = SolidColor(Color.Transparent),
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 1.8f,
+            strokeLineCap = StrokeCap.Round
+        ) {
+            moveTo(17f, 5f)
+            arcTo(8f, 8f, 0f, isMoreThanHalf = false, isPositiveArc = true, x1 = 17f, y1 = 19f)
+        }
+    }.build()
+}
+
+/** Speaker-with-X icon shown when the game's sound effects are muted. */
+private val SoundMuteIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "SoundMute",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        speakerCone()
+        // A small "X" where the sound waves would be, the common "muted" cue.
+        path(
+            fill = SolidColor(Color.Transparent),
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round
+        ) {
+            moveTo(14f, 8.5f)
+            lineTo(21f, 15.5f)
+        }
+        path(
+            fill = SolidColor(Color.Transparent),
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round
+        ) {
+            moveTo(21f, 8.5f)
+            lineTo(14f, 15.5f)
+        }
+    }.build()
 }
 
 /**
