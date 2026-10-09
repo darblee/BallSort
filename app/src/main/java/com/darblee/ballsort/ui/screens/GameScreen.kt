@@ -40,8 +40,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
@@ -333,11 +336,11 @@ private fun DrawGameBoard(
 
             for (curCol in 0 until Global.MAX_COLUMNS) {
                 val origin = layout.tubeOrigins[curCol]
-                drawLine(
-                    color = Color.White,
-                    start = Offset(origin.x, origin.y + (1.5F * layout.ballRadius)),
-                    end = Offset(origin.x, origin.y + layout.columnLength),
-                    strokeWidth = 10f
+                drawPole(
+                    drawScope = this,
+                    topTip = Offset(origin.x, origin.y + (1.5F * layout.ballRadius)),
+                    bottomEnd = Offset(origin.x, origin.y + layout.columnLength),
+                    poleWidth = layout.ballRadius * 0.22f
                 )
                 for (curSlot in 0 until Global.MAX_SLOT_PER_COLUMN) {
                     drawBall(this, curCol, curSlot, gameViewModel, layout)
@@ -573,6 +576,65 @@ private fun drawSphere(
             ),
             radius = radius * 0.55f,
             center = lightOffset
+        )
+    }
+}
+
+/**
+ * Draws the vertical spindle balls are stacked on as a 3-D looking white pole with a
+ * sharp point at its top.
+ *
+ * The shaft is shaded with a left-to-right gradient (dark-light-dark) to read as a
+ * rounded cylinder, with a thin specular highlight running down its length. The tip
+ * is a narrow triangle in the same gradient so the shading continues unbroken into
+ * the point.
+ *
+ * @param drawScope Canvas scope to draw on.
+ * @param topTip Apex of the pole's pointed tip (top of the column).
+ * @param bottomEnd Base of the pole, anchored at the bottom of the tube.
+ * @param poleWidth Width (diameter) of the pole's shaft.
+ */
+private fun drawPole(
+    drawScope: DrawScope,
+    topTip: Offset,
+    bottomEnd: Offset,
+    poleWidth: Float
+) {
+    val halfWidth = poleWidth / 2f
+    val tipLength = poleWidth * 3f
+    val shaftTopY = topTip.y + tipLength
+    val x = topTip.x
+
+    val shadeBrush = Brush.linearGradient(
+        colors = listOf(Color(0xFF8A8A8A), Color.White, Color(0xFFB0B0B0)),
+        start = Offset(x - halfWidth, 0f),
+        end = Offset(x + halfWidth, 0f)
+    )
+
+    with(drawScope) {
+        // Shaft.
+        drawRect(
+            brush = shadeBrush,
+            topLeft = Offset(x - halfWidth, shaftTopY),
+            size = Size(poleWidth, bottomEnd.y - shaftTopY)
+        )
+
+        // Sharp pointed tip, shaded the same way so it reads as one continuous spike.
+        val tip = Path().apply {
+            moveTo(x, topTip.y)
+            lineTo(x - halfWidth, shaftTopY)
+            lineTo(x + halfWidth, shaftTopY)
+            close()
+        }
+        drawPath(path = tip, brush = shadeBrush)
+
+        // Thin specular highlight down the shaft for extra roundness.
+        drawLine(
+            color = Color.White.copy(alpha = 0.7f),
+            start = Offset(x - halfWidth * 0.25f, shaftTopY),
+            end = Offset(x - halfWidth * 0.25f, bottomEnd.y),
+            strokeWidth = (poleWidth * 0.2f).coerceAtLeast(1f),
+            cap = StrokeCap.Round
         )
     }
 }
