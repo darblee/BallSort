@@ -158,6 +158,14 @@ fun GameScreen(historyFile: File, modifier: Modifier = Modifier) {
 private val ActionButtonWidth = 148.dp
 
 /**
+ * Size of the sound on/off icon. The action buttons render at Material3's default ~48.dp
+ * height, so this is set well above 3/4 of that (36.dp) to keep the icon from looking tiny
+ * next to them -- it previously used `SwitchDefaults.IconSize * 1.5f`, but `IconSize` is only
+ * 16.dp, so that worked out to a mere 24.dp.
+ */
+private val SoundIconSize = 40.dp
+
+/**
  * Renders the control buttons for the game, including options to start a new game,
  * restart the current level, undo the last move, and toggle sound.
  *
@@ -239,7 +247,7 @@ private fun DrawButtons(
             Icon(
                 imageVector = if (soundOn) SoundOnIcon else SoundMuteIcon,
                 contentDescription = if (soundOn) "Sound on, tap to mute" else "Sound muted, tap to unmute",
-                modifier = Modifier.size(SwitchDefaults.IconSize * 1.5f)
+                modifier = Modifier.size(SoundIconSize)
             )
         }
     }
