@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -150,6 +151,13 @@ fun GameScreen(historyFile: File, modifier: Modifier = Modifier) {
 }
 
 /**
+ * Fixed width applied to every action button (New Game / Restart / Undo) so they line
+ * up evenly instead of each hugging its own label's width. Sized to comfortably fit the
+ * widest label, "New Game", with its icon.
+ */
+private val ActionButtonWidth = 148.dp
+
+/**
  * Renders the control buttons for the game, including options to start a new game,
  * restart the current level, undo the last move, and toggle sound.
  *
@@ -179,7 +187,8 @@ private fun DrawButtons(
             onClick = {
                 view.click()
                 gameViewModel.newGame()
-            }
+            },
+            modifier = Modifier.width(ActionButtonWidth)
         ) {
             Icon(
                 imageVector = Icons.Filled.Star,
@@ -192,7 +201,8 @@ private fun DrawButtons(
             onClick = {
                 view.click()
                 gameViewModel.resetGame()
-            }
+            },
+            modifier = Modifier.width(ActionButtonWidth)
         ) {
             Icon(
                 imageVector = Icons.Filled.Refresh,
@@ -206,6 +216,7 @@ private fun DrawButtons(
                 view.click()
                 gameViewModel.userRevertToPreviousMove()
             },
+            modifier = Modifier.width(ActionButtonWidth),
             enabled = undoButtonRequestState
         ) {
             Icon(
