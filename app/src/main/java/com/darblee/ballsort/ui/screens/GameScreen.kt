@@ -17,6 +17,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -155,7 +156,13 @@ fun GameScreen(historyFile: File, modifier: Modifier = Modifier) {
  * up evenly instead of each hugging its own label's width. Sized to comfortably fit the
  * widest label, "New Game", with its icon.
  */
-private val ActionButtonWidth = 148.dp
+private val ActionButtonWidth = 104.dp
+
+/**
+ * Content padding for action buttons, tighter than Material3's default (24.dp horizontal)
+ * so the icon + label fit comfortably within the narrower [ActionButtonWidth].
+ */
+private val ActionButtonContentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
 
 /**
  * Size of the sound on/off icon. The action buttons render at Material3's default ~48.dp
@@ -196,7 +203,8 @@ private fun DrawButtons(
                 view.click()
                 gameViewModel.newGame()
             },
-            modifier = Modifier.width(ActionButtonWidth)
+            modifier = Modifier.width(ActionButtonWidth),
+            contentPadding = ActionButtonContentPadding
         ) {
             Icon(
                 imageVector = Icons.Filled.Star,
@@ -210,7 +218,8 @@ private fun DrawButtons(
                 view.click()
                 gameViewModel.resetGame()
             },
-            modifier = Modifier.width(ActionButtonWidth)
+            modifier = Modifier.width(ActionButtonWidth),
+            contentPadding = ActionButtonContentPadding
         ) {
             Icon(
                 imageVector = Icons.Filled.Refresh,
@@ -225,7 +234,8 @@ private fun DrawButtons(
                 gameViewModel.userRevertToPreviousMove()
             },
             modifier = Modifier.width(ActionButtonWidth),
-            enabled = undoButtonRequestState
+            enabled = undoButtonRequestState,
+            contentPadding = ActionButtonContentPadding
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -268,8 +278,9 @@ private fun DrawButtons(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 30.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                    .padding(top = 30.dp)
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
             ) {
                 actionButtons()
             }
@@ -381,6 +392,7 @@ private val SoundMuteIcon: ImageVector by lazy {
  * @param onClick Invoked when the button is tapped.
  * @param modifier Modifier applied to the underlying [Button].
  * @param enabled Whether the button can be interacted with; also drives the raised/flat look.
+ * @param contentPadding Padding between the button's edge and its content.
  * @param content Button content, typically an [Icon] plus a [Text] label.
  */
 @Composable
@@ -388,6 +400,7 @@ private fun ThreeDButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
     content: @Composable RowScope.() -> Unit
 ) {
     val shape = ButtonDefaults.shape
@@ -416,6 +429,7 @@ private fun ThreeDButton(
                 listOf(Color.White.copy(alpha = 0.75f), Color.Transparent)
             )
         ),
+        contentPadding = contentPadding,
         modifier = modifier
             .shadow(
                 elevation = if (enabled) 8.dp else 0.dp,
